@@ -26,5 +26,6 @@ declare global {
     CF_ACCESS_TEAM_DOMAIN?: string;
     CF_ACCESS_AUD?: string;
     CFBLOG_CACHE_ENABLED?: string;
+    CFBLOG_UPDATE_CHECK_URL?: string;
   }
 }

@@ -1,0 +1,212 @@
+---
+import { env } from "cloudflare:workers";
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { getUpdateStatus } from "../../../lib/update/status";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+  CFBLOG_UPDATE_CHECK_URL?: string;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const status = await getUpdateStatus(runtimeEnv.CFBLOG_DB);
+const updateCheckConfigured = Boolean(runtimeEnv.CFBLOG_UPDATE_CHECK_URL);
+---
+
+<AdminLayout title="Updates">
+  <section class="version-grid" aria-label="Version status">
+    <article>
+      <span>Source template</span>
+      <strong>{status.templateVersion}</strong>
+    </article>
+    <article>
+      <span>Installed template</span>
+      <strong>{status.installedTemplateVersion}</strong>
+    </article>
+    <article>
+      <span>Source schema</span>
+      <strong>{status.schemaVersion}</strong>
+    </article>
+    <article>
+      <span>Installed schema</span>
+      <strong>{status.installedSchemaVersion}</strong>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Update Check</h2>
+      <button class="btn" id="check-update" type="button" disabled={!updateCheckConfigured}>
+        Check latest
+      </button>
+    </div>
+    <p class="muted">
+      {updateCheckConfigured
+        ? "Fetches the configured static latest-version URL without changing this deployment."
+        : "Set CFBLOG_UPDATE_CHECK_URL to enable a read-only latest-version check."}
+    </p>
+    <p class="status" id="update-check-status" role="status" />
+  </section>
+
+  <section class="panel">
+    <h2>Migration Status</h2>
+    {
+      status.pendingLocalMigrations.length > 0 ? (
+        <div class="callout danger">
+          Pending local migrations: {status.pendingLocalMigrations.join(", ")}
+        </div>
+      ) : (
+        <div class="callout">All known local migrations are recorded in D1.</div>
+      )
+    }
+    <ul class="migration-list">
+      {status.appliedMigrations.map((migration) => <li>{migration}</li>)}
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Update Steps</h2>
+    <ol>
+      <li>Back up D1 and important R2 objects.</li>
+      <li>Pull template code from the upstream Git remote into a branch.</li>
+      <li>Run local migrations against a preview database.</li>
+      <li>Build and dry-run the Worker deploy.</li>
+      <li>Apply remote D1 migrations, then deploy the Worker.</li>
+    </ol>
+    <p class="muted">
+      See <code>UPGRADING.md</code> in the repository for the full operator checklist.
+    </p>
+  </section>
+</AdminLayout>
+
+<script>
+  const button = document.getElementById("check-update");
+  const statusEl = document.getElementById("update-check-status");
+
+  function setStatus(message: string, isError = false) {
+    if (!(statusEl instanceof HTMLElement)) {
+      return;
+    }
+    statusEl.textContent = message;
+    statusEl.style.color = isError ? "#8b2942" : "#354139";
+  }
+
+  function asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+  }
+
+  button?.addEventListener("click", async () => {
+    setStatus("Checking...");
+    const response = await fetch("/api/admin/update-check", {
+      credentials: "same-origin"
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload) {
+      setStatus("Update check failed.", true);
+      return;
+    }
+
+    const root = asRecord(payload);
+    const latest = asRecord(root?.latest);
+    const status = asRecord(root?.status);
+    const latestError = latest?.error;
+    if (typeof latestError === "string") {
+      setStatus(latestError, true);
+      return;
+    }
+    if (latest?.updateAvailable === true && typeof latest.latestVersion === "string") {
+      setStatus(`Update available: ${latest.latestVersion}`);
+      return;
+    }
+    const current = typeof status?.templateVersion === "string" ? status.templateVersion : "current";
+    setStatus(`Current template is up to date (${current}).`);
+  });
+</script>
+
+<style>
+  .version-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .version-grid article,
+  .panel {
+    border: 1px solid #d8d0c2;
+    background: #fbf9f4;
+    padding: 18px;
+  }
+
+  .version-grid span {
+    display: block;
+    color: #6d756d;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+  }
+
+  .version-grid strong {
+    color: #1f2523;
+    font-size: 1.35rem;
+  }
+
+  .panel {
+    display: grid;
+    gap: 12px;
+    max-width: 900px;
+    margin-bottom: 18px;
+  }
+
+  .panel h2 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .muted {
+    margin: 0;
+    color: #6d756d;
+  }
+
+  .btn {
+    border: 1px solid #1f2523;
+    padding: 9px 12px;
+    background: #2f6f4e;
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .callout {
+    border-left: 4px solid #2f6f4e;
+    background: #eef4ee;
+    padding: 10px 12px;
+  }
+
+  .callout.danger {
+    border-left-color: #8b2942;
+    background: #f8eeee;
+  }
+
+  .migration-list {
+    margin: 0;
+    padding-left: 20px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  .status {
+    min-height: 1.4em;
+    margin: 0;
+  }
+</style>

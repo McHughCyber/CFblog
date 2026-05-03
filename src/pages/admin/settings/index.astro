@@ -1,37 +1,199 @@
 ---
+import { env } from "cloudflare:workers";
 import AdminLayout from "../../../layouts/AdminLayout.astro";
 import ConfirmBar from "../../../components/admin/ConfirmBar.astro";
 import FormField from "../../../components/admin/FormField.astro";
+import { loadAiTrafficSettings } from "../../../lib/ai-traffic/load";
+import type { AiTrafficSettings } from "../../../lib/ai-traffic/schema";
+import { getSetting } from "../../../lib/db/settings";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+interface SiteSettings {
+  title: string;
+  description: string;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const [site, aiTraffic] = await Promise.all([
+  getSetting<SiteSettings>(runtimeEnv.CFBLOG_DB, "site"),
+  loadAiTrafficSettings(runtimeEnv.CFBLOG_DB)
+]);
+
+const initialAiTraffic: AiTrafficSettings = aiTraffic;
 ---
 
 <AdminLayout title="Settings">
-  <form>
-    <ConfirmBar message="Settings are shown in read-only mode." />
-    <FormField
-      for="site-title"
-      label="Site title"
-      hint="This value is stored in D1 settings."
-    >
-      <input id="site-title" name="site-title" type="text" value="CFblog" disabled />
-    </FormField>
-    <FormField
-      for="site-description"
-      label="Site description"
-      hint="Used by public metadata, RSS, and homepage copy."
-    >
-      <textarea id="site-description" name="site-description" disabled>A Cloudflare-native Astro blog.</textarea>
-    </FormField>
-  </form>
+  <div class="settings-grid">
+    <form class="panel">
+      <ConfirmBar message="Core site settings are shown in read-only mode." />
+      <FormField
+        for="site-title"
+        label="Site title"
+        hint="This value is stored in D1 settings."
+      >
+        <input id="site-title" name="site-title" type="text" value={site?.title ?? "CFblog"} disabled />
+      </FormField>
+      <FormField
+        for="site-description"
+        label="Site description"
+        hint="Used by public metadata, RSS, and homepage copy."
+      >
+        <textarea id="site-description" name="site-description" disabled>{site?.description ?? "A Cloudflare-native Astro blog."}</textarea>
+      </FormField>
+    </form>
+
+    <form class="panel" id="ai-traffic-form">
+      <ConfirmBar message="AI crawler controls here generate public hint files. Cloudflare enforcement and Pay Per Crawl are configured in the Cloudflare dashboard." />
+      <FormField
+        for="ai-description"
+        label="AI-facing site description"
+        hint="Published in llms.txt and crawlers.json."
+      >
+        <textarea id="ai-description" name="siteDescription">{initialAiTraffic.siteDescription}</textarea>
+      </FormField>
+
+      <FormField
+        for="robots-policy"
+        label="Robots policy"
+        hint="Use robots.txt for crawler guidance; use Cloudflare AI Crawl Control for enforcement."
+      >
+        <select id="robots-policy" name="robotsPolicy">
+          <option value="allow" selected={initialAiTraffic.robotsPolicy === "allow"}>Allow all crawlers</option>
+          <option value="disallow-ai" selected={initialAiTraffic.robotsPolicy === "disallow-ai"}>
+            Disallow listed AI crawlers
+          </option>
+        </select>
+      </FormField>
+
+      <FormField
+        for="ai-user-agents"
+        label="AI crawler user agents"
+        hint="One user agent per line, used only when AI crawlers are disallowed."
+      >
+        <textarea id="ai-user-agents" name="aiUserAgents" class="mono-input">{initialAiTraffic.aiUserAgents.join("\n")}</textarea>
+      </FormField>
+
+      <div class="toggle-grid">
+        <label><input id="llms-txt-enabled" type="checkbox" checked={initialAiTraffic.llmsTxtEnabled} /> llms.txt</label>
+        <label><input id="llms-full-enabled" type="checkbox" checked={initialAiTraffic.llmsFullTxtEnabled} /> llms-full.txt</label>
+        <label><input id="crawlers-json-enabled" type="checkbox" checked={initialAiTraffic.crawlersJsonEnabled} /> crawlers.json</label>
+      </div>
+
+      <FormField
+        for="contact-url"
+        label="Contact URL"
+        hint="Optional absolute URL for crawler operators or content licensing."
+      >
+        <input id="contact-url" name="contactUrl" type="url" value={initialAiTraffic.contactUrl ?? ""} placeholder="https://example.com/contact" />
+      </FormField>
+
+      <FormField
+        for="license-url"
+        label="Content license URL"
+        hint="Optional absolute URL describing reuse terms."
+      >
+        <input id="license-url" name="contentLicenseUrl" type="url" value={initialAiTraffic.contentLicenseUrl ?? ""} placeholder="https://example.com/license" />
+      </FormField>
+
+      <div class="actions">
+        <button type="submit" class="btn primary">Save AI settings</button>
+      </div>
+      <p class="status" id="ai-traffic-status" role="status" />
+    </form>
+  </div>
 </AdminLayout>
 
+<script>
+  const form = document.getElementById("ai-traffic-form");
+  const statusEl = document.getElementById("ai-traffic-status");
+
+  function setStatus(message: string, isError: boolean) {
+    if (!(statusEl instanceof HTMLElement)) {
+      return;
+    }
+    statusEl.textContent = message;
+    statusEl.style.color = isError ? "#8b2942" : "#354139";
+  }
+
+  function textareaValue(id: string): string {
+    const el = document.getElementById(id);
+    return el instanceof HTMLTextAreaElement ? el.value : "";
+  }
+
+  function inputValue(id: string): string | null {
+    const el = document.getElementById(id);
+    if (!(el instanceof HTMLInputElement)) {
+      return null;
+    }
+    const value = el.value.trim();
+    return value.length > 0 ? value : null;
+  }
+
+  function checked(id: string): boolean {
+    const el = document.getElementById(id);
+    return el instanceof HTMLInputElement ? el.checked : false;
+  }
+
+  function errorMessage(payload: unknown): string | null {
+    if (!payload || typeof payload !== "object" || !("error" in payload)) {
+      return null;
+    }
+    const error = (payload as { error: unknown }).error;
+    return typeof error === "string" ? error : null;
+  }
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const robotsPolicyEl = document.getElementById("robots-policy");
+    const body = {
+      siteDescription: textareaValue("ai-description"),
+      robotsPolicy: robotsPolicyEl instanceof HTMLSelectElement ? robotsPolicyEl.value : "allow",
+      aiUserAgents: textareaValue("ai-user-agents")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean),
+      llmsTxtEnabled: checked("llms-txt-enabled"),
+      llmsFullTxtEnabled: checked("llms-full-enabled"),
+      crawlersJsonEnabled: checked("crawlers-json-enabled"),
+      contactUrl: inputValue("contact-url"),
+      contentLicenseUrl: inputValue("license-url")
+    };
+
+    setStatus("Saving...", false);
+    const res = await fetch("/api/admin/settings/ai-traffic", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setStatus(errorMessage(payload) ?? "Could not save AI settings.", true);
+      return;
+    }
+    setStatus("AI settings saved.", false);
+  });
+</script>
+
 <style>
-  form {
-    max-width: 720px;
+  .settings-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+    max-width: 880px;
+  }
+
+  .panel {
     display: grid;
     gap: 18px;
   }
 
   input,
+  select,
   textarea {
     box-sizing: border-box;
     width: 100%;
@@ -45,5 +207,53 @@ import FormField from "../../../components/admin/FormField.astro";
   textarea {
     min-height: 120px;
     resize: vertical;
+  }
+
+  .mono-input {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  .toggle-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .toggle-grid label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #d8d0c2;
+    padding: 10px 12px;
+    background: #fffdf8;
+  }
+
+  .toggle-grid input {
+    width: auto;
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn {
+    border: 1px solid #1f2523;
+    padding: 10px 14px;
+    background: #f5efe3;
+    color: #1f2523;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .btn.primary {
+    background: #2f6f4e;
+    border-color: #2f6f4e;
+    color: #fff;
+  }
+
+  .status {
+    min-height: 1.4em;
+    margin: 0;
   }
 </style>

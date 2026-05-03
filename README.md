@@ -63,6 +63,14 @@ Before running Wrangler preview or deploy, replace placeholder binding IDs in `w
 
 Admin routes and admin API routes are protected by Cloudflare Access JWT validation. See [Cloudflare Access setup](docs/access-setup.md) for the required Access application and environment configuration.
 
+## AI Crawler Guidance
+
+CFblog serves `/robots.txt`, `/llms.txt`, `/llms-full.txt`, and `/crawlers.json` from D1-backed settings. Configure crawler-facing descriptions and robots policy from `/admin/settings`. Cloudflare AI Crawl Control and Pay Per Crawl enforcement still happens in the Cloudflare dashboard; see [AI crawler management](docs/ai-crawlers.md).
+
+## Updates
+
+CFblog updates are Git-based: pull template changes, test them, apply D1 migrations, and deploy the Worker. The admin panel includes `/admin/update` for installed template/schema visibility and an optional read-only update check. See [UPGRADING.md](UPGRADING.md) and [CHANGELOG.md](CHANGELOG.md).
+
 ## Development Environment Variables
 
 Local development and Wrangler deployment use dotenv-style environment variables from `.env`. The real `.env` file must stay local and must not be committed or shared with AI tooling.

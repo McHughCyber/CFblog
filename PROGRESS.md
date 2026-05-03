@@ -9,7 +9,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | ---------------- | -------------------------------------------------- |
 | Project          | Astro Cloudflare Blog Template                     |
 | Roadmap          | `plan/feature-astro-cloudflare-blog-template-1.md` |
-| Current Phase    | Phase 12: AI Traffic Management Support          |
+| Current Phase    | Phase 14: Testing And QA                         |
 | Overall Status   | In Development                                     |
 | Last Updated     | 2026-05-03                                         |
 | MVP Target       | TBD                                                |
@@ -33,8 +33,8 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | M9        | Menu Management                        | Completed   | Codex | 2026-05-03 | 2026-05-03 |
 | M10       | R2 Media Uploads And Attachments       | Completed   | Codex | 2026-05-03 | 2026-05-03 |
 | M11       | Theme Customization                    | Completed   | Codex | 2026-05-03 | 2026-05-03 |
-| M12       | AI Traffic Management Support          | Not Started | TBD   |            |            |
-| M13       | Update And Migration Strategy          | Not Started | TBD   |            |            |
+| M12       | AI Traffic Management Support          | Completed   | Codex | 2026-05-03 | 2026-05-03 |
+| M13       | Update And Migration Strategy          | Completed   | Codex | 2026-05-03 | 2026-05-03 |
 | M14       | Testing And QA                         | Not Started | TBD   |            |            |
 | M15       | Documentation And Template Readiness   | Not Started | TBD   |            |            |
 
@@ -157,6 +157,28 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | TASK-0908 | Render primary menu.                            | Completed   | Codex | `SiteHeader` + `NavList` on homepage and catch-all pages.                            |
 | TASK-0909 | Render footer menu.                             | Completed   | Codex | `SiteFooter` when footer menu has resolvable items.                                |
 | TASK-0910 | Validate broken menu targets.                   | Completed   | Codex | `resolveMenuItemHref` plus admin table OK column and public omission of bad links. |
+| TASK-1201 | Create AI crawler docs.                         | Completed   | Codex | Added `docs/ai-crawlers.md`.                                                     |
+| TASK-1202 | Document AI Crawl Control setup.                | Completed   | Codex | Documented dashboard setup and official docs links.                              |
+| TASK-1203 | Document Pay Per Crawl beta caveat.             | Completed   | Codex | Documented closed beta and dashboard-level setup.                                |
+| TASK-1204 | Document Cloudflare-level configuration.        | Completed   | Codex | Clarified app hint files vs Cloudflare enforcement.                              |
+| TASK-1205 | Generate robots.txt from settings.              | Completed   | Codex | `robots.txt` now uses D1-backed AI traffic settings.                             |
+| TASK-1206 | Add optional llms.txt.                          | Completed   | Codex | Added `/llms.txt` endpoint gated by setting.                                     |
+| TASK-1207 | Add optional llms-full.txt.                     | Completed   | Codex | Added `/llms-full.txt` endpoint gated by setting.                                |
+| TASK-1208 | Add optional crawlers.json.                     | Completed   | Codex | Added `/crawlers.json` endpoint gated by setting.                                |
+| TASK-1209 | Add AI crawler-facing site description setting. | Completed   | Codex | Added `aiTraffic` setting and admin settings form/API.                           |
+| TASK-1210 | Add SEO warning for crawler blocking/charging.  | Completed   | Codex | `/admin/settings` warns that blocking/charging is Cloudflare-level enforcement.  |
+| TASK-1301 | Add template version constant.                  | Completed   | Codex | Added `TEMPLATE_VERSION` in `src/lib/version.ts`.                              |
+| TASK-1302 | Store installed template version.               | Completed   | Codex | Existing D1 setting is preserved/backfilled by migration 0004.                  |
+| TASK-1303 | Add admin update status page.                   | Completed   | Codex | Added `/admin/update`.                                                          |
+| TASK-1304 | Show current template version.                  | Completed   | Codex | Admin update page shows source and installed template versions.                 |
+| TASK-1305 | Show current schema version.                    | Completed   | Codex | Admin update page shows source and installed schema versions.                   |
+| TASK-1306 | Add changelog.                                  | Completed   | Codex | Added `CHANGELOG.md`.                                                           |
+| TASK-1307 | Add upgrading guide.                            | Completed   | Codex | Added `UPGRADING.md`.                                                           |
+| TASK-1308 | Document Git update flow.                       | Completed   | Codex | `UPGRADING.md` includes upstream remote, branch, merge, install, test, build.   |
+| TASK-1309 | Document D1 migration flow.                     | Completed   | Codex | `UPGRADING.md` includes local and remote Wrangler D1 migration flow.            |
+| TASK-1310 | Document backup and preview strategy.           | Completed   | Codex | `UPGRADING.md` includes backup and preview checklist.                           |
+| TASK-1311 | Add compatibility table.                        | Completed   | Codex | Added tables in `CHANGELOG.md` and `UPGRADING.md`.                              |
+| TASK-1312 | Add optional update-check endpoint.             | Completed   | Codex | Added protected `GET /api/admin/update-check` using `CFBLOG_UPDATE_CHECK_URL`.  |
 
 
 ## Backlog By Phase
@@ -375,16 +397,16 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 
 | Task      | Status      | Notes                                           |
 | --------- | ----------- | ----------------------------------------------- |
-| TASK-1201 | Not Started | Create AI crawler docs.                         |
-| TASK-1202 | Not Started | Document AI Crawl Control setup.                |
-| TASK-1203 | Not Started | Document Pay Per Crawl beta caveat.             |
-| TASK-1204 | Not Started | Document Cloudflare-level configuration.        |
-| TASK-1205 | Not Started | Generate robots.txt from settings.              |
-| TASK-1206 | Not Started | Add optional llms.txt.                          |
-| TASK-1207 | Not Started | Add optional llms-full.txt.                     |
-| TASK-1208 | Not Started | Add optional crawlers.json.                     |
-| TASK-1209 | Not Started | Add AI crawler-facing site description setting. |
-| TASK-1210 | Not Started | Add SEO warning for crawler blocking/charging.  |
+| TASK-1201 | Completed | Added `docs/ai-crawlers.md`.                     |
+| TASK-1202 | Completed | Documented Cloudflare AI Crawl Control dashboard setup and docs links. |
+| TASK-1203 | Completed | Documented Pay Per Crawl closed beta caveat.     |
+| TASK-1204 | Completed | Clarified that enforcement and charging are Cloudflare-level configuration. |
+| TASK-1205 | Completed | `robots.txt` renders from D1-backed `aiTraffic` settings. |
+| TASK-1206 | Completed | Added optional `/llms.txt`.                       |
+| TASK-1207 | Completed | Added optional `/llms-full.txt`.                  |
+| TASK-1208 | Completed | Added optional `/crawlers.json`.                  |
+| TASK-1209 | Completed | Added AI crawler-facing description in `/admin/settings` and API persistence. |
+| TASK-1210 | Completed | Added admin warning that blocking/charging is handled in Cloudflare. |
 
 
 ### M13: Update And Migration Strategy
@@ -392,18 +414,18 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 
 | Task      | Status      | Notes                                 |
 | --------- | ----------- | ------------------------------------- |
-| TASK-1301 | Not Started | Add template version constant.        |
-| TASK-1302 | Not Started | Store installed template version.     |
-| TASK-1303 | Not Started | Add admin update status page.         |
-| TASK-1304 | Not Started | Show current template version.        |
-| TASK-1305 | Not Started | Show current schema version.          |
-| TASK-1306 | Not Started | Add changelog.                        |
-| TASK-1307 | Not Started | Add upgrading guide.                  |
-| TASK-1308 | Not Started | Document Git update flow.             |
-| TASK-1309 | Not Started | Document D1 migration flow.           |
-| TASK-1310 | Not Started | Document backup and preview strategy. |
-| TASK-1311 | Not Started | Add compatibility table.              |
-| TASK-1312 | Not Started | Add optional update-check endpoint.   |
+| TASK-1301 | Completed | Added `TEMPLATE_VERSION` in `src/lib/version.ts`. |
+| TASK-1302 | Completed | D1 `settings.template.version` is preserved/backfilled by migration 0004. |
+| TASK-1303 | Completed | Added protected `/admin/update`.       |
+| TASK-1304 | Completed | Shows source and installed template versions. |
+| TASK-1305 | Completed | Shows source and installed schema versions plus applied migrations. |
+| TASK-1306 | Completed | Added `CHANGELOG.md`.                  |
+| TASK-1307 | Completed | Added `UPGRADING.md`.                  |
+| TASK-1308 | Completed | Documented upstream Git update flow.   |
+| TASK-1309 | Completed | Documented local and remote D1 migration commands. |
+| TASK-1310 | Completed | Documented D1/R2 backup and preview deployment strategy. |
+| TASK-1311 | Completed | Added compatibility tables.            |
+| TASK-1312 | Completed | Added optional protected update-check endpoint. |
 
 
 ### M14: Testing And QA
@@ -493,7 +515,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | -------------------------------------- | ----------- | ----- |
 | Local build succeeds                   | Completed        | `corepack pnpm build` succeeds. |
 | Worker deploy succeeds                 | Dry Run Complete | `corepack pnpm exec wrangler deploy --dry-run` succeeds; real deploy awaits real binding IDs/account resources. |
-| D1 migrations apply locally            | Completed        | `corepack pnpm db:migrations:apply` applied 0001 and 0002 locally. |
+| D1 migrations apply locally            | Completed        | `corepack pnpm exec wrangler d1 migrations apply CFBLOG_DB --local` applied through 0004 locally. |
 | D1 migrations apply remotely           | Not Started |       |
 | R2 upload works                        | Implemented | Upload API and admin library; production QA with real R2 bucket pending. |
 | Admin requires Access JWT              | Completed | `curl /admin` and `curl /api/admin/probe` return `403` without a JWT. |
@@ -507,9 +529,10 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | Redirects work after slug change       | Implemented | Post/category upserts create redirect records when full paths change; end-to-end admin flow pending. |
 | Sitemap renders                        | Completed | `curl /sitemap.xml` returns D1-backed XML. |
 | RSS renders                            | Completed | `curl /rss.xml` returns D1-backed RSS. |
-| Robots.txt renders                     | Completed | `curl /robots.txt` returns sitemap reference. |
+| Robots.txt renders                     | Completed | `curl /robots.txt` returns D1-backed AI traffic policy and sitemap reference. |
+| AI crawler hint files render           | Completed | `curl /llms.txt`, `/llms-full.txt`, and `/crawlers.json` return D1-backed guidance. |
 | Deploy button works from clean account | Not Started |       |
-| Update documentation is complete       | Not Started |       |
+| Update documentation is complete       | Completed | `UPGRADING.md`, `CHANGELOG.md`, `/admin/update`, and update-check endpoint added. |
 
 
 ## MVP Release Criteria
@@ -527,8 +550,8 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | Configurable menus render publicly.                                                | In Progress |
 | Theme settings affect the public site.                                             | Implemented |
 | Sitemap, RSS, robots, canonical URLs, and Open Graph metadata work.                | Completed |
-| AI Crawl Control support is documented honestly as Cloudflare-level configuration. | Not Started |
-| Update and migration documentation exists.                                         | Not Started |
+| AI Crawl Control support is documented honestly as Cloudflare-level configuration. | Completed |
+| Update and migration documentation exists.                                         | Completed |
 | CI validates build and core tests.                                                 | Not Started |
 
 
@@ -554,3 +577,5 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | 2026-05-03 | Codex | Completed Phase 9 menu management: `resolveMenuTree`, `SiteHeader`/`SiteFooter`/`NavList` on public pages, `/admin/menus` and item editor, CRUD APIs under `/api/admin/menus`, nested parents, sort order, new tab flag, and admin target validation. |
 | 2026-05-03 | Codex | Completed Phase 10 R2 media: upload policy and keys, `/api/admin/media` and `/api/admin/media/[id]`, public `/media/[id]` with immutable cache headers, D1-only serve path, admin media library, post editor insert-from-library, delete guard when posts reference an asset, and tests for keys and upload policy. |
 | 2026-05-03 | Codex | Completed Phase 11 theme: `schema.ts`, `cssVariables.ts`, guarded `customCss`, `loadTheme`, `ThemeHead` on homepage, catch-all, and 404; `SiteHeader` logo and CSS-variable-based public chrome; `/admin/theme` and `GET`/`PATCH`/`DELETE` `/api/admin/theme`; homepage magazine and card listing variants; Vitest coverage for schema, CSS output, and CSS guard. |
+| 2026-05-03 | Codex | Completed Phase 12 AI traffic management: D1-backed `aiTraffic` settings, admin settings form/API, dynamic `robots.txt`, optional `llms.txt`, `llms-full.txt`, `crawlers.json`, official Cloudflare-facing docs, migration 0003, and render-helper tests. |
+| 2026-05-03 | Codex | Completed Phase 13 update strategy: `TEMPLATE_VERSION`/`SCHEMA_VERSION`, migration 0004, protected `/admin/update`, optional `/api/admin/update-check`, changelog, upgrading guide, compatibility tables, and local migration/version verification. |
