@@ -14,6 +14,7 @@ describe("buildCategoryTree", () => {
         description: null,
         seo_title: null,
         seo_description: null,
+        robots_directive: null,
         sort_order: 0,
         created_at: "t",
         updated_at: "t"
@@ -27,6 +28,7 @@ describe("buildCategoryTree", () => {
         description: null,
         seo_title: null,
         seo_description: null,
+        robots_directive: null,
         sort_order: 0,
         created_at: "t",
         updated_at: "t"

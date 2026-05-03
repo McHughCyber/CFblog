@@ -31,6 +31,7 @@ interface Props {
     seo_title: string | null;
     seo_description: string | null;
     canonical_url: string | null;
+    og_image_asset_id: string | null;
     robots_directive: string | null;
     author_name: string | null;
   } | null;
@@ -74,6 +75,7 @@ const initial = post ?? {
   seo_title: null,
   seo_description: null,
   canonical_url: null,
+  og_image_asset_id: null,
   robots_directive: "index,follow",
   author_name: null
 };
@@ -189,6 +191,9 @@ const assigned = assignedCategories.length
         <FormField label="Canonical URL" for="field-canonical">
           <input id="field-canonical" name="canonical_url" type="url" value={initial.canonical_url ?? ""} />
         </FormField>
+        <FormField label="Open Graph image asset ID" for="field-og-image" hint="Optional media asset id from the Media library.">
+          <input id="field-og-image" name="og_image_asset_id" type="text" value={initial.og_image_asset_id ?? ""} />
+        </FormField>
         <FormField label="Robots" for="field-robots" hint="For example index,follow">
           <input id="field-robots" name="robots_directive" type="text" value={initial.robots_directive ?? ""} />
         </FormField>
@@ -296,6 +301,7 @@ const assigned = assignedCategories.length
     const seoTitle = document.getElementById("field-seo-title");
     const seoDesc = document.getElementById("field-seo-desc");
     const canonical = document.getElementById("field-canonical");
+    const ogImage = document.getElementById("field-og-image");
     const robots = document.getElementById("field-robots");
     const author = document.getElementById("field-author");
     const md = document.getElementById("field-markdown");
@@ -312,6 +318,7 @@ const assigned = assignedCategories.length
       seoTitle: seoTitle instanceof HTMLInputElement ? seoTitle.value || null : null,
       seoDescription: seoDesc instanceof HTMLTextAreaElement ? seoDesc.value || null : null,
       canonicalUrl: canonical instanceof HTMLInputElement ? canonical.value || null : null,
+      ogImageAssetId: ogImage instanceof HTMLInputElement ? ogImage.value || null : null,
       robotsDirective: robots instanceof HTMLInputElement ? robots.value || null : null,
       authorName: author instanceof HTMLInputElement ? author.value || null : null,
       categories: collectCategories()

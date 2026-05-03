@@ -32,13 +32,15 @@ function parseLimitOffset(url: URL): { limit: number; offset: number } {
 
 export const GET: APIRoute = async ({ request }) => {
   const runtimeEnv = env as RuntimeEnv;
-  const { limit, offset } = parseLimitOffset(new URL(request.url));
+  const url = new URL(request.url);
+  const { limit, offset } = parseLimitOffset(url);
+  const q = url.searchParams.get("q");
   const [items, total] = await Promise.all([
-    listMediaAssets(runtimeEnv.CFBLOG_DB, { limit, offset }),
-    countMediaAssets(runtimeEnv.CFBLOG_DB)
+    listMediaAssets(runtimeEnv.CFBLOG_DB, { limit, offset, q }),
+    countMediaAssets(runtimeEnv.CFBLOG_DB, q)
   ]);
 
-  return new Response(JSON.stringify({ items, total, limit, offset }), {
+  return new Response(JSON.stringify({ items, total, limit, offset, q }), {
     status: 200,
     headers: { "content-type": "application/json; charset=utf-8" }
   });

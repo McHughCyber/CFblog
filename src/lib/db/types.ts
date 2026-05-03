@@ -41,6 +41,7 @@ export interface CategoryRecord {
   description: string | null;
   seo_title: string | null;
   seo_description: string | null;
+  robots_directive: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;

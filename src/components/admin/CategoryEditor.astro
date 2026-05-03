@@ -19,6 +19,7 @@ interface Props {
     description: string | null;
     seo_title: string | null;
     seo_description: string | null;
+    robots_directive: string | null;
     sort_order: number;
   };
 }
@@ -73,6 +74,9 @@ const payload = { mode, categoryId };
       <FormField label="SEO description" for="cat-seo-desc">
         <textarea id="cat-seo-desc" rows="2">{initial.seo_description ?? ""}</textarea>
       </FormField>
+      <FormField label="Robots" for="cat-robots" hint="For example index,follow or noindex,follow.">
+        <input id="cat-robots" type="text" value={initial.robots_directive ?? ""} />
+      </FormField>
     </details>
 
     <div class="actions">
@@ -124,6 +128,7 @@ const payload = { mode, categoryId };
     const descEl = document.getElementById("cat-desc");
     const seoTitleEl = document.getElementById("cat-seo-title");
     const seoDescEl = document.getElementById("cat-seo-desc");
+    const robotsEl = document.getElementById("cat-robots");
 
     const body = {
       name,
@@ -132,7 +137,8 @@ const payload = { mode, categoryId };
       sortOrder,
       description: descEl instanceof HTMLTextAreaElement ? descEl.value : "",
       seoTitle: seoTitleEl instanceof HTMLInputElement ? seoTitleEl.value : "",
-      seoDescription: seoDescEl instanceof HTMLTextAreaElement ? seoDescEl.value : ""
+      seoDescription: seoDescEl instanceof HTMLTextAreaElement ? seoDescEl.value : "",
+      robotsDirective: robotsEl instanceof HTMLInputElement ? robotsEl.value : ""
     };
 
     const isNew = payload.mode === "new" || !payload.categoryId;

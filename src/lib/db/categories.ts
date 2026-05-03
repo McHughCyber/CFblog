@@ -11,6 +11,7 @@ export interface CategoryInput {
   description?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  robotsDirective?: string | null;
   sortOrder?: number;
 }
 
@@ -74,6 +75,7 @@ export async function getCategoryAncestors(
         description,
         seo_title,
         seo_description,
+        robots_directive,
         sort_order,
         created_at,
         updated_at
@@ -133,6 +135,7 @@ export async function listCategorySubtreeOrdered(
         description,
         seo_title,
         seo_description,
+        robots_directive,
         sort_order,
         created_at,
         updated_at
@@ -195,11 +198,12 @@ export async function upsertCategory(
         description,
         seo_title,
         seo_description,
+        robots_directive,
         sort_order,
         created_at,
         updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         parent_id = excluded.parent_id,
         name = excluded.name,
@@ -208,6 +212,7 @@ export async function upsertCategory(
         description = excluded.description,
         seo_title = excluded.seo_title,
         seo_description = excluded.seo_description,
+        robots_directive = excluded.robots_directive,
         sort_order = excluded.sort_order,
         updated_at = excluded.updated_at
     `,
@@ -220,6 +225,7 @@ export async function upsertCategory(
       input.description ?? null,
       input.seoTitle ?? null,
       input.seoDescription ?? null,
+      input.robotsDirective ?? null,
       input.sortOrder ?? 0,
       now,
       now

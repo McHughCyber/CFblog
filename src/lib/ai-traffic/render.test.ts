@@ -34,6 +34,7 @@ const category: CategoryRecord = {
   description: null,
   seo_title: null,
   seo_description: null,
+  robots_directive: null,
   sort_order: 0,
   created_at: "2026-05-03T00:00:00.000Z",
   updated_at: "2026-05-03T00:00:00.000Z"

@@ -67,6 +67,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       description: typeof body.description === "string" ? body.description : null,
       seoTitle: typeof body.seoTitle === "string" ? body.seoTitle : null,
       seoDescription: typeof body.seoDescription === "string" ? body.seoDescription : null,
+      robotsDirective: typeof body.robotsDirective === "string" ? body.robotsDirective : null,
       sortOrder: typeof body.sortOrder === "number" ? body.sortOrder : 0
     },
     new Date().toISOString()

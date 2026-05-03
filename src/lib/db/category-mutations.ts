@@ -22,6 +22,7 @@ export interface CategorySavePayload {
   description?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  robotsDirective?: string | null;
   sortOrder?: number;
 }
 
@@ -136,6 +137,7 @@ export async function applyCategorySave(
   const description = payload.description?.trim() || null;
   const seoTitle = payload.seoTitle?.trim() || null;
   const seoDescription = payload.seoDescription?.trim() || null;
+  const robotsDirective = payload.robotsDirective?.trim() || null;
 
   if (!existing) {
     const parentPath = parentId
@@ -168,6 +170,7 @@ export async function applyCategorySave(
       description,
       seoTitle,
       seoDescription,
+      robotsDirective,
       sortOrder
     };
 
@@ -277,6 +280,7 @@ export async function applyCategorySave(
         description: row.id === payload.id ? description : row.description,
         seoTitle: row.id === payload.id ? seoTitle : row.seo_title,
         seoDescription: row.id === payload.id ? seoDescription : row.seo_description,
+        robotsDirective: row.id === payload.id ? robotsDirective : row.robots_directive,
         sortOrder: row.id === payload.id ? sortOrder : row.sort_order
       };
 

@@ -1,4 +1,4 @@
-import { all, first, run } from "./client";
+import { all, first, run, type D1Value } from "./client";
 import type { MediaAssetRecord } from "./types";
 
 export interface MediaAssetInput {
@@ -17,17 +17,21 @@ export interface MediaAssetInput {
 
 export async function listMediaAssets(
   database: D1Database,
-  options: { limit?: number; offset?: number } = {}
+  options: { limit?: number; offset?: number; q?: string | null } = {}
 ): Promise<MediaAssetRecord[]> {
+  const { where, bindings } = mediaSearchClause(options.q);
+  bindings.push(options.limit ?? 50, options.offset ?? 0);
+
   return all<MediaAssetRecord>(
     database,
     `
       SELECT *
       FROM media_assets
+      ${where}
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
     `,
-    [options.limit ?? 50, options.offset ?? 0]
+    bindings
   );
 }
 
@@ -94,10 +98,15 @@ export async function getMediaAssetById(
   );
 }
 
-export async function countMediaAssets(database: D1Database): Promise<number> {
+export async function countMediaAssets(
+  database: D1Database,
+  q?: string | null
+): Promise<number> {
+  const { where, bindings } = mediaSearchClause(q);
   const row = await first<{ total: number }>(
     database,
-    "SELECT COUNT(*) AS total FROM media_assets"
+    `SELECT COUNT(*) AS total FROM media_assets ${where}`,
+    bindings
   );
   return row?.total ?? 0;
 }
@@ -116,4 +125,23 @@ export async function updateMediaAssetMeta(
 
 export async function deleteMediaAssetRow(database: D1Database, id: string): Promise<D1Result> {
   return run(database, "DELETE FROM media_assets WHERE id = ?", [id]);
+}
+
+function mediaSearchClause(q?: string | null): { where: string; bindings: D1Value[] } {
+  const term = q?.trim();
+  if (!term) {
+    return { where: "", bindings: [] };
+  }
+
+  const like = `%${term}%`;
+  return {
+    where: `
+      WHERE file_name LIKE ?
+        OR public_path LIKE ?
+        OR content_type LIKE ?
+        OR alt_text LIKE ?
+        OR caption LIKE ?
+    `,
+    bindings: [like, like, like, like, like]
+  };
 }

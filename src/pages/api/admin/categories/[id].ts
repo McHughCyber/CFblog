@@ -103,6 +103,10 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
         typeof body.seoDescription === "string"
           ? body.seoDescription
           : existing.seo_description,
+      robotsDirective:
+        typeof body.robotsDirective === "string"
+          ? body.robotsDirective
+          : existing.robots_directive,
       sortOrder:
         typeof body.sortOrder === "number" ? body.sortOrder : existing.sort_order
     },

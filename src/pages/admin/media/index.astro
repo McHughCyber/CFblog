@@ -10,8 +10,9 @@ interface RuntimeEnv {
 
 const runtimeEnv = env as RuntimeEnv;
 const limit = 60;
-const assets = await listMediaAssets(runtimeEnv.CFBLOG_DB, { limit, offset: 0 });
-const total = await countMediaAssets(runtimeEnv.CFBLOG_DB);
+const q = Astro.url.searchParams.get("q")?.trim() ?? "";
+const assets = await listMediaAssets(runtimeEnv.CFBLOG_DB, { limit, offset: 0, q });
+const total = await countMediaAssets(runtimeEnv.CFBLOG_DB, q);
 ---
 
 <AdminLayout title="Media">
@@ -32,6 +33,15 @@ const total = await countMediaAssets(runtimeEnv.CFBLOG_DB);
     <p class="upload-status" data-upload-status role="status" />
   </section>
 
+  <form class="search-form" method="get" role="search">
+    <label>
+      <span>Search media</span>
+      <input type="search" name="q" value={q} placeholder="Filename, path, alt text, caption" />
+    </label>
+    <button type="submit" class="btn">Search</button>
+    {q && <a class="clear-link" href="/admin/media">Clear</a>}
+  </form>
+
   {
     assets.length === 0 ? (
       <EmptyState
@@ -41,7 +51,7 @@ const total = await countMediaAssets(runtimeEnv.CFBLOG_DB);
     ) : (
       <>
         <p class="meta">
-          Showing {assets.length} of {total} asset{total === 1 ? "" : "s"}
+          Showing {assets.length} of {total} asset{total === 1 ? "" : "s"}{q ? ` matching "${q}"` : ""}
         </p>
         <div class="grid">
           {assets.map((a) => (
@@ -55,6 +65,7 @@ const total = await countMediaAssets(runtimeEnv.CFBLOG_DB);
                   <span class="muted">{a.content_type}</span>
                 </p>
                 <p class="muted small">{a.public_path}</p>
+                <p class="muted small">Asset ID: <code class="mono">{a.id}</code></p>
                 <label class="field">
                   Alt text
                   <input type="text" data-alt value={a.alt_text ?? ""} />
@@ -269,6 +280,35 @@ const total = await countMediaAssets(runtimeEnv.CFBLOG_DB);
     border-radius: 10px;
     padding: 16px 18px 18px;
     margin-bottom: 22px;
+  }
+
+  .search-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: end;
+    margin: 18px 0;
+  }
+
+  .search-form label {
+    display: grid;
+    gap: 6px;
+    min-width: min(100%, 320px);
+    color: #49534c;
+    font-weight: 700;
+  }
+
+  .search-form input {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #cfc7b8;
+    padding: 9px 10px;
+    font: inherit;
+  }
+
+  .clear-link {
+    color: #2f6f4e;
+    font-weight: 700;
   }
 
   .upload-panel h2 {

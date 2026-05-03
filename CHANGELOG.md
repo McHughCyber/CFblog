@@ -14,9 +14,10 @@ Initial MVP development line.
 - Added SEO endpoints and metadata: sitemap, RSS, robots, canonical URLs, Open Graph, Twitter cards, and JSON-LD.
 - Added AI crawler guidance endpoints and settings: `robots.txt`, `llms.txt`, `llms-full.txt`, and `crawlers.json`.
 - Added update strategy foundations: template/schema version constants, admin update status page, optional update-check endpoint, and upgrade docs.
+- Remediated milestone review gaps for global SEO defaults, post Open Graph image rendering, category robots directives, and compatibility documentation aliases.
 
 ## Compatibility
 
 | Template version | Schema version          | Minimum migration         | Notes |
 | ---------------- | ----------------------- | ------------------------- | ----- |
-| 0.1.0            | 0004_update_strategy    | 0004_update_strategy      | MVP development baseline with update status support. |
+| 0.1.0            | 0005_milestone_review_fixes | 0005_milestone_review_fixes | MVP development baseline with SEO remediation and update status support. |

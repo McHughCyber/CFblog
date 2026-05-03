@@ -5,6 +5,7 @@ import SiteHeader from "../components/site/SiteHeader.astro";
 import ThemeHead from "../components/site/ThemeHead.astro";
 import { loadPublicNavigation } from "../lib/menus/public-navigation";
 import { countPublishedPosts, listPublishedPosts } from "../lib/db/posts";
+import { getMediaAssetById } from "../lib/db/media";
 import { getSetting } from "../lib/db/settings";
 import { loadTheme } from "../lib/theme/load";
 import { createPagination, pageHref, parsePage } from "../lib/pagination";
@@ -16,6 +17,8 @@ interface SiteSettings {
   description: string;
   language: string;
   postsPerPage: number;
+  defaultOgImageAssetId?: string | null;
+  authorName?: string | null;
 }
 
 interface VersionSetting {
@@ -36,7 +39,9 @@ const site =
     title: "CFblog",
     description: "A Cloudflare-native Astro blog.",
     language: "en",
-    postsPerPage: 10
+    postsPerPage: 10,
+    defaultOgImageAssetId: null,
+    authorName: "CFblog"
   };
 const totalPosts = await countPublishedPosts(runtimeEnv.CFBLOG_DB);
 const pagination = createPagination(
@@ -51,6 +56,12 @@ const posts: PostRecord[] = await listPublishedPosts(runtimeEnv.CFBLOG_DB, {
 const nav = await loadPublicNavigation(runtimeEnv.CFBLOG_DB);
 const theme = await loadTheme(runtimeEnv.CFBLOG_DB);
 const canonicalUrl = absoluteUrl({ siteUrl: runtimeEnv.SITE_URL, path: "/" });
+const defaultOgImage = site.defaultOgImageAssetId
+  ? await getMediaAssetById(runtimeEnv.CFBLOG_DB, site.defaultOgImageAssetId)
+  : null;
+const ogImageUrl = defaultOgImage
+  ? absoluteUrl({ siteUrl: runtimeEnv.SITE_URL, path: defaultOgImage.public_path })
+  : null;
 const pageTitle =
   pagination.currentPage > 1
     ? `${site.title} - Page ${pagination.currentPage}`
@@ -84,6 +95,7 @@ const pageTitle =
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={site.description} />
     <meta property="og:url" content={canonicalUrl} />
+    {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={site.description} />
@@ -95,7 +107,14 @@ const pageTitle =
         "@type": "Blog",
         name: site.title,
         description: site.description,
-        url: canonicalUrl
+        url: canonicalUrl,
+        author: site.authorName
+          ? {
+              "@type": "Person",
+              name: site.authorName
+            }
+          : undefined,
+        image: ogImageUrl
       })}
     />
     <title>{pageTitle}</title>

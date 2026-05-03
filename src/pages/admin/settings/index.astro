@@ -14,6 +14,8 @@ interface RuntimeEnv {
 interface SiteSettings {
   title: string;
   description: string;
+  authorName?: string | null;
+  defaultOgImageAssetId?: string | null;
 }
 
 const runtimeEnv = env as RuntimeEnv;
@@ -42,6 +44,20 @@ const initialAiTraffic: AiTrafficSettings = aiTraffic;
         hint="Used by public metadata, RSS, and homepage copy."
       >
         <textarea id="site-description" name="site-description" disabled>{site?.description ?? "A Cloudflare-native Astro blog."}</textarea>
+      </FormField>
+      <FormField
+        for="site-author"
+        label="Default author"
+        hint="Used by homepage structured data when configured."
+      >
+        <input id="site-author" name="site-author" type="text" value={site?.authorName ?? "CFblog"} disabled />
+      </FormField>
+      <FormField
+        for="site-og"
+        label="Default Open Graph image asset ID"
+        hint="Used as the fallback social image when a post has no OG image asset."
+      >
+        <input id="site-og" name="site-og" type="text" value={site?.defaultOgImageAssetId ?? ""} disabled />
       </FormField>
     </form>
 

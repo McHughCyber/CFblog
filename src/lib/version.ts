@@ -1,5 +1,5 @@
 export const TEMPLATE_VERSION = "0.1.0";
-export const SCHEMA_VERSION = "0004_update_strategy";
+export const SCHEMA_VERSION = "0005_milestone_review_fixes";
 
 export interface VersionSetting {
   value: string;

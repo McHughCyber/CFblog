@@ -86,10 +86,10 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | TASK-0309 | Add syntax highlighting if selected.            | Deferred    | Codex | No syntax highlighter selected for MVP yet; code blocks render safely.           |
 | TASK-0310 | Add post pagination.                            | Completed   | Codex | Homepage supports bounded `?page=` pagination.                                   |
 | TASK-0311 | Add category pagination.                        | Completed   | Codex | Category pages support bounded `?page=` pagination.                              |
-| TASK-0312 | Exclude non-public content.                     | Completed   | Codex | Public post queries only include published posts with eligible dates.            |
-| TASK-0401 | Add global metadata settings.                   | Completed   | Codex | Homepage and feeds read title/description/language from D1 settings.             |
-| TASK-0402 | Add post metadata rendering.                    | Completed   | Codex | Post pages render description, canonical, Open Graph, Twitter, and JSON-LD.      |
-| TASK-0403 | Add category metadata rendering.                | Completed   | Codex | Category pages render description, canonical, Open Graph, Twitter, and JSON-LD.  |
+| TASK-0312 | Exclude non-public content.                     | Completed   | Codex | Public queries include published posts and scheduled posts after `scheduled_at`; draft, archived, and future scheduled posts are hidden. |
+| TASK-0401 | Add global metadata settings.                   | Completed   | Codex | Homepage and feeds read title/description/language plus default author/OG image settings. |
+| TASK-0402 | Add post metadata rendering.                    | Completed   | Codex | Post pages render description, canonical, Open Graph, optional OG image, robots, Twitter, and JSON-LD. |
+| TASK-0403 | Add category metadata rendering.                | Completed   | Codex | Category pages render description, canonical, robots, Open Graph, Twitter, and JSON-LD. |
 | TASK-0404 | Generate sitemap.                               | Completed   | Codex | Added D1-backed `sitemap.xml`.                                                   |
 | TASK-0405 | Generate RSS.                                   | Completed   | Codex | Added D1-backed `rss.xml`.                                                       |
 | TASK-0406 | Generate robots.txt.                            | Completed   | Codex | Added `robots.txt` with sitemap reference.                                       |
@@ -236,7 +236,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | TASK-0309 | Deferred    | No syntax highlighter selected for MVP yet; code blocks render safely. |
 | TASK-0310 | Completed   | Homepage supports bounded `?page=` pagination. |
 | TASK-0311 | Completed   | Category pages support bounded `?page=` pagination. |
-| TASK-0312 | Completed   | Public queries filter to published posts with eligible publish dates. |
+| TASK-0312 | Completed   | Public queries include published posts and due scheduled posts while hiding drafts, archived, and future scheduled posts. |
 
 
 ### M4: SEO Foundation
@@ -244,9 +244,9 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 
 | Task      | Status      | Notes                            |
 | --------- | ----------- | -------------------------------- |
-| TASK-0401 | Completed | Homepage and feeds read global metadata from D1 settings. |
-| TASK-0402 | Completed | Post pages render description, canonical, Open Graph, Twitter, and JSON-LD. |
-| TASK-0403 | Completed | Category pages render description, canonical, Open Graph, Twitter, and JSON-LD. |
+| TASK-0401 | Completed | Homepage and feeds read global metadata from D1 settings, including default author and OG image asset id. |
+| TASK-0402 | Completed | Post pages render description, canonical, robots, Open Graph, optional OG image, Twitter, and JSON-LD. |
+| TASK-0403 | Completed | Category pages render description, canonical, robots, Open Graph, Twitter, and JSON-LD. |
 | TASK-0404 | Completed | Added D1-backed `sitemap.xml`. |
 | TASK-0405 | Completed | Added D1-backed `rss.xml`. |
 | TASK-0406 | Completed | Added `robots.txt` with sitemap reference. |
@@ -362,7 +362,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | TASK-1004 | Completed | SVG rejected in API and documented in `upload-policy.ts`.                                     |
 | TASK-1005 | Completed | `buildMediaR2Key` in `src/lib/media/r2-keys.ts`.                                               |
 | TASK-1006 | Completed | `createMediaAsset` after R2 `put`; rollback R2 on D1 insert failure.                         |
-| TASK-1007 | Completed | `/admin/media` grid with upload, copy Markdown, meta save, delete.                            |
+| TASK-1007 | Completed | `/admin/media` grid with upload, metadata search, copy Markdown, meta save, delete.           |
 | TASK-1008 | Completed | Post editor "Media library" panel lists assets from the media API.                            |
 | TASK-1009 | Completed | Insert button appends `![alt](public_path)` at the Markdown cursor.                           |
 | TASK-1010 | Completed | `PATCH /api/admin/media/[id]` for `alt_text` and `caption`.                                   |
@@ -418,7 +418,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | TASK-1302 | Completed | D1 `settings.template.version` is preserved/backfilled by migration 0004. |
 | TASK-1303 | Completed | Added protected `/admin/update`.       |
 | TASK-1304 | Completed | Shows source and installed template versions. |
-| TASK-1305 | Completed | Shows source and installed schema versions plus applied migrations. |
+| TASK-1305 | Completed | Shows source and installed schema versions plus applied migrations through 0005. |
 | TASK-1306 | Completed | Added `CHANGELOG.md`.                  |
 | TASK-1307 | Completed | Added `UPGRADING.md`.                  |
 | TASK-1308 | Completed | Documented upstream Git update flow.   |
@@ -515,13 +515,13 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | -------------------------------------- | ----------- | ----- |
 | Local build succeeds                   | Completed        | `corepack pnpm build` succeeds. |
 | Worker deploy succeeds                 | Dry Run Complete | `corepack pnpm exec wrangler deploy --dry-run` succeeds; real deploy awaits real binding IDs/account resources. |
-| D1 migrations apply locally            | Completed        | `corepack pnpm exec wrangler d1 migrations apply CFBLOG_DB --local` applied through 0004 locally. |
+| D1 migrations apply locally            | Completed        | `corepack pnpm exec wrangler d1 migrations apply CFBLOG_DB --local` applied through 0005 locally. |
 | D1 migrations apply remotely           | Not Started |       |
 | R2 upload works                        | Implemented | Upload API and admin library; production QA with real R2 bucket pending. |
 | Admin requires Access JWT              | Completed | `curl /admin` and `curl /api/admin/probe` return `403` without a JWT. |
 | Admin rejects invalid Access JWT       | Completed | Validator verifies signature, issuer, and audience with signed-token regression tests. |
 | Post publish flow works                | In Progress | Admin editor and APIs implemented; end-to-end browser QA on deployed Access still pending. |
-| Draft posts are hidden publicly        | Implemented | Public queries filter out non-published content; dedicated regression tests pending. |
+| Draft posts are hidden publicly        | Implemented | Public queries hide drafts, archived posts, and future scheduled posts; past scheduled rendering was manually verified. |
 | Nested categories work                 | In Progress | Admin category CRUD, cascade paths, and post resync implemented; full QA on deployed Access pending. |
 | Menu customization works               | In Progress | Admin CRUD and public menus implemented; add footer seed items in new installs if desired. |
 | Image insertion works                  | Implemented | Editor media panel and Markdown sanitiser allow `/media/...` image paths. |
@@ -546,7 +546,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | A user can create, edit, preview, publish, unpublish, and archive Markdown posts.  | In Progress |
 | A user can upload images to R2 and insert them into articles.                      | In Progress |
 | Nested categories work.                                                            | In Progress |
-| Custom slugs and redirects work.                                                   | Not Started |
+| Custom slugs and redirects work.                                                   | Implemented |
 | Configurable menus render publicly.                                                | In Progress |
 | Theme settings affect the public site.                                             | Implemented |
 | Sitemap, RSS, robots, canonical URLs, and Open Graph metadata work.                | Completed |
@@ -579,3 +579,4 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | 2026-05-03 | Codex | Completed Phase 11 theme: `schema.ts`, `cssVariables.ts`, guarded `customCss`, `loadTheme`, `ThemeHead` on homepage, catch-all, and 404; `SiteHeader` logo and CSS-variable-based public chrome; `/admin/theme` and `GET`/`PATCH`/`DELETE` `/api/admin/theme`; homepage magazine and card listing variants; Vitest coverage for schema, CSS output, and CSS guard. |
 | 2026-05-03 | Codex | Completed Phase 12 AI traffic management: D1-backed `aiTraffic` settings, admin settings form/API, dynamic `robots.txt`, optional `llms.txt`, `llms-full.txt`, `crawlers.json`, official Cloudflare-facing docs, migration 0003, and render-helper tests. |
 | 2026-05-03 | Codex | Completed Phase 13 update strategy: `TEMPLATE_VERSION`/`SCHEMA_VERSION`, migration 0004, protected `/admin/update`, optional `/api/admin/update-check`, changelog, upgrading guide, compatibility tables, and local migration/version verification. |
+| 2026-05-03 | Codex | Reviewed completed Milestones 1-13 and remediated gaps: scheduled posts now publish after `scheduled_at`, category robots directives are stored/rendered, post/default OG image metadata is wired, media metadata search was added, plan-compatible docs aliases were added, schema advanced to 0005, and validations were rerun. |

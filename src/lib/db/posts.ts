@@ -4,7 +4,11 @@ import { buildPostFullPath } from "../posts/paths";
 import type { CategoryRecord, PostRecord, PostRevisionRecord, PostStatus } from "./types";
 
 const publicPostPredicate =
-  "status = 'published' AND (published_at IS NULL OR published_at <= ?)";
+  `(
+    (status = 'published' AND (published_at IS NULL OR published_at <= ?))
+    OR
+    (status = 'scheduled' AND scheduled_at IS NOT NULL AND scheduled_at <= ?)
+  )`;
 
 export interface PostInput {
   id: string;
@@ -38,10 +42,10 @@ export async function listPublishedPosts(
       SELECT *
       FROM posts
       WHERE ${publicPostPredicate}
-      ORDER BY published_at DESC, created_at DESC
+      ORDER BY COALESCE(published_at, scheduled_at, created_at) DESC, created_at DESC
       LIMIT ? OFFSET ?
     `,
-    [now, limit, offset]
+    [now, now, limit, offset]
   );
 }
 
@@ -56,7 +60,7 @@ export async function countPublishedPosts(
       FROM posts
       WHERE ${publicPostPredicate}
     `,
-    [now]
+    [now, now]
   );
 
   return row?.total ?? 0;
@@ -74,7 +78,7 @@ export async function getPublishedPostByFullPath(
       FROM posts
       WHERE full_path = ? AND ${publicPostPredicate}
     `,
-    [fullPath, now]
+    [fullPath, now, now]
   );
 }
 
@@ -322,10 +326,10 @@ export async function listPublishedPostsByCategoryId(
       INNER JOIN post_categories ON post_categories.post_id = posts.id
       WHERE post_categories.category_id = ?
         AND ${publicPostPredicate}
-      ORDER BY posts.published_at DESC, posts.created_at DESC
+      ORDER BY COALESCE(posts.published_at, posts.scheduled_at, posts.created_at) DESC, posts.created_at DESC
       LIMIT ? OFFSET ?
     `,
-    [categoryId, now, limit, offset]
+    [categoryId, now, now, limit, offset]
   );
 }
 
@@ -343,7 +347,7 @@ export async function countPublishedPostsByCategoryId(
       WHERE post_categories.category_id = ?
         AND ${publicPostPredicate}
     `,
-    [categoryId, now]
+    [categoryId, now, now]
   );
 
   return row?.total ?? 0;
