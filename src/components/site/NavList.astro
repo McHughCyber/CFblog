@@ -1,0 +1,61 @@
+---
+import type { ResolvedMenuNode } from "../../lib/menus/resolve";
+
+interface Props {
+  nodes: ResolvedMenuNode[];
+  nested?: boolean;
+}
+
+const { nodes, nested = false } = Astro.props;
+---
+
+<ul class:list={["nav-list", nested && "nested"]}>
+  {
+    nodes.map((n) => (
+      <li>
+        {n.openInNewTab ? (
+          <a href={n.href} target="_blank" rel="noopener noreferrer">
+            {n.label}
+          </a>
+        ) : (
+          <a href={n.href}>{n.label}</a>
+        )}
+        {n.children.length > 0 && <Astro.self nodes={n.children} nested />}
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .nav-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    align-items: center;
+  }
+
+  .nav-list.nested {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: 6px;
+    margin-left: 12px;
+    padding-left: 10px;
+    border-left: 1px solid color-mix(in srgb, var(--cf-border) 85%, transparent);
+    gap: 4px;
+  }
+
+  .nav-list a {
+    color: var(--cf-accent);
+    font-weight: 600;
+    text-decoration: none;
+    font-family: var(--cf-font-ui);
+    font-size: 0.92rem;
+  }
+
+  .nav-list a:hover {
+    text-decoration: underline;
+  }
+</style>

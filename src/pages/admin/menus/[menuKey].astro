@@ -1,0 +1,250 @@
+---
+import { env } from "cloudflare:workers";
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import EmptyState from "../../../components/admin/EmptyState.astro";
+import { getMenuByKey } from "../../../lib/db/menus";
+import { resolveMenuItemHref } from "../../../lib/menus/resolve";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const menuKey = Astro.params.menuKey;
+
+if (!menuKey) {
+  return Astro.redirect("/admin/menus", 302);
+}
+
+const menu = await getMenuByKey(runtimeEnv.CFBLOG_DB, menuKey);
+if (!menu) {
+  return Astro.redirect("/admin/menus", 302);
+}
+
+const rows = await Promise.all(
+  menu.items.map(async (item) => {
+    const r = await resolveMenuItemHref(runtimeEnv.CFBLOG_DB, item, "admin");
+    const parent = item.parent_id
+      ? menu.items.find((i) => i.id === item.parent_id)?.label ?? "—"
+      : "—";
+    return { item, resolvedHref: r.href, targetOk: r.ok, parentLabel: parent };
+  })
+);
+
+rows.sort((a, b) => {
+  const pa = a.item.parent_id ?? "";
+  const pb = b.item.parent_id ?? "";
+  if (pa !== pb) {
+    return pa.localeCompare(pb);
+  }
+  if (a.item.sort_order !== b.item.sort_order) {
+    return a.item.sort_order - b.item.sort_order;
+  }
+  return a.item.label.localeCompare(b.item.label);
+});
+---
+
+<AdminLayout title={`Menu: ${menu.name}`}>
+  <div class="page-head">
+    <a class="back" href="/admin/menus">All menus</a>
+    <a class="add" href={`/admin/menus/${menuKey}/items/new`}>Add item</a>
+  </div>
+
+  <p class="hint">
+    Item type <strong>url</strong> accepts a site path or a full <code>https://</code> URL. <strong>Post</strong> and
+    <strong>category</strong> targets use internal ids. Broken targets are flagged until the linked content exists or
+    is published.
+  </p>
+
+  {
+    rows.length === 0 ? (
+      <EmptyState title="No items yet" detail="Add a menu item to show links in this menu on the public site." />
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Type</th>
+              <th>Target</th>
+              <th>Resolves to</th>
+              <th>OK</th>
+              <th>Sort</th>
+              <th>Parent</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ item, resolvedHref, targetOk, parentLabel }) => (
+              <tr>
+                <td>{item.label}</td>
+                <td>{item.item_type}</td>
+                <td class="mono">{item.target}</td>
+                <td class="mono">{resolvedHref}</td>
+                <td>
+                  {targetOk ? (
+                    <span class="ok">Yes</span>
+                  ) : (
+                    <span class="bad">No</span>
+                  )}
+                </td>
+                <td>{item.sort_order}</td>
+                <td>{parentLabel}</td>
+                <td class="actions">
+                  <a href={`/admin/menus/${menuKey}/items/${item.id}/edit`}>Edit</a>
+                  <button type="button" class="linkish" data-delete={item.id}>
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</AdminLayout>
+
+<script is:inline define:vars={{ menuKey }}>
+  document.querySelectorAll("[data-delete]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-delete");
+      if (!id) {
+        return;
+      }
+      if (
+        !window.confirm(
+          "Delete this item? Child items are removed automatically when a parent is deleted."
+        )
+      ) {
+        return;
+      }
+      const res = await fetch(`/api/admin/menus/${menuKey}/items/${id}`, {
+        method: "DELETE",
+        credentials: "same-origin"
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        window.alert(data.error || "Delete failed");
+        return;
+      }
+      window.location.reload();
+    });
+  });
+</script>
+
+<style>
+  .page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .back,
+  .add {
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .back {
+    color: #354139;
+  }
+
+  .add {
+    display: inline-block;
+    padding: 9px 16px;
+    border-radius: 6px;
+    background: #2f6f4e;
+    color: #fff;
+  }
+
+  .add:hover {
+    background: #285f43;
+  }
+
+  .hint {
+    max-width: 52rem;
+    margin: 0 0 18px;
+    color: #536057;
+    line-height: 1.55;
+    font-size: 0.92rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    background: #fff;
+    border: 1px solid #d8d2c7;
+    border-radius: 8px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid #ece8df;
+    vertical-align: top;
+  }
+
+  th {
+    background: #f7f4ee;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: #6d746e;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    word-break: break-all;
+  }
+
+  .ok {
+    color: #1f4d33;
+    font-weight: 700;
+  }
+
+  .bad {
+    color: #8b2942;
+    font-weight: 700;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    white-space: nowrap;
+  }
+
+  .actions a {
+    color: #2f6f4e;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .actions a:hover {
+    text-decoration: underline;
+  }
+
+  .linkish {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: #8b2942;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    font: inherit;
+  }
+</style>

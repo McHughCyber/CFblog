@@ -1,0 +1,49 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import ConfirmBar from "../../../components/admin/ConfirmBar.astro";
+import FormField from "../../../components/admin/FormField.astro";
+---
+
+<AdminLayout title="Settings">
+  <form>
+    <ConfirmBar message="Settings are shown in read-only mode." />
+    <FormField
+      for="site-title"
+      label="Site title"
+      hint="This value is stored in D1 settings."
+    >
+      <input id="site-title" name="site-title" type="text" value="CFblog" disabled />
+    </FormField>
+    <FormField
+      for="site-description"
+      label="Site description"
+      hint="Used by public metadata, RSS, and homepage copy."
+    >
+      <textarea id="site-description" name="site-description" disabled>A Cloudflare-native Astro blog.</textarea>
+    </FormField>
+  </form>
+</AdminLayout>
+
+<style>
+  form {
+    max-width: 720px;
+    display: grid;
+    gap: 18px;
+  }
+
+  input,
+  textarea {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #cfc7b8;
+    padding: 10px 12px;
+    background: #fbf9f4;
+    color: #1f2523;
+    font: inherit;
+  }
+
+  textarea {
+    min-height: 120px;
+    resize: vertical;
+  }
+</style>

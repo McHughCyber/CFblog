@@ -1,0 +1,25 @@
+---
+import { env } from "cloudflare:workers";
+import PostEditor from "../../../components/admin/PostEditor.astro";
+import { listCategories } from "../../../lib/db/categories";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const categories = await listCategories(runtimeEnv.CFBLOG_DB);
+---
+
+<PostEditor
+  mode="new"
+  postId={null}
+  categories={categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    full_path: c.full_path
+  }))}
+  post={null}
+  assignedCategories={[]}
+  revisions={[]}
+/>

@@ -1,0 +1,95 @@
+---
+import { env } from "cloudflare:workers";
+import ThemeHead from "../components/site/ThemeHead.astro";
+import { getSetting } from "../lib/db/settings";
+import { loadTheme } from "../lib/theme/load";
+
+export const prerender = false;
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const theme = await loadTheme(runtimeEnv.CFBLOG_DB);
+const site = await getSetting<{ title: string }>(runtimeEnv.CFBLOG_DB, "site");
+const siteTitle = site?.title ?? "CFblog";
+const requestedPath = Astro.originPathname;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <ThemeHead theme={theme} />
+    <meta name="robots" content="noindex" />
+    <title>Not Found | {siteTitle}</title>
+  </head>
+  <body>
+    <main>
+      <a href="/">{siteTitle}</a>
+      <p>404</p>
+      <h1>That path has no published page.</h1>
+      <code>{requestedPath}</code>
+    </main>
+  </body>
+</html>
+
+<style>
+  body {
+    margin: 0;
+  }
+
+  main {
+    box-sizing: border-box;
+    min-height: 100vh;
+    width: min(100%, 760px);
+    margin: 0 auto;
+    padding: 56px 24px;
+    display: grid;
+    align-content: center;
+    gap: 14px;
+  }
+
+  a,
+  p,
+  code {
+    font-family: var(--cf-font-ui);
+  }
+
+  a {
+    color: color-mix(in srgb, var(--cf-text) 55%, var(--cf-muted));
+    font-size: 0.88rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--cf-accent);
+    text-decoration: underline;
+    text-underline-offset: 0.16em;
+  }
+
+  p {
+    margin: 40px 0 0;
+    color: var(--cf-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  h1 {
+    max-width: 10ch;
+    margin: 0;
+    font-size: clamp(3rem, 10vw, 7rem);
+    line-height: 0.94;
+  }
+
+  code {
+    width: fit-content;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--cf-border);
+    padding: 8px 10px;
+    color: color-mix(in srgb, var(--cf-text) 58%, var(--cf-muted));
+  }
+</style>

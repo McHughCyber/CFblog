@@ -1,0 +1,490 @@
+---
+import { env } from "cloudflare:workers";
+import SiteFooter from "../components/site/SiteFooter.astro";
+import SiteHeader from "../components/site/SiteHeader.astro";
+import ThemeHead from "../components/site/ThemeHead.astro";
+import { getCategoryAncestors, getCategoryByFullPath } from "../lib/db/categories";
+import {
+  countPublishedPostsByCategoryId,
+  getPrimaryCategoryForPost,
+  getPublishedPostByFullPath,
+  listPublishedPostsByCategoryId
+} from "../lib/db/posts";
+import { getRedirectByFromPath } from "../lib/db/redirects";
+import { getSetting } from "../lib/db/settings";
+import { loadPublicNavigation } from "../lib/menus/public-navigation";
+import { loadTheme } from "../lib/theme/load";
+import { renderMarkdown } from "../lib/markdown/render";
+import { createPagination, pageHref, parsePage, type Pagination } from "../lib/pagination";
+import { absoluteUrl } from "../lib/seo";
+import type { CategoryRecord, PostRecord } from "../lib/db/types";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+  SITE_URL: string;
+}
+
+interface SiteSettings {
+  title: string;
+  description: string;
+  language: string;
+  postsPerPage: number;
+}
+
+type PageModel =
+  | {
+      kind: "post";
+      post: PostRecord;
+      html: string;
+      breadcrumbs: Breadcrumb[];
+    }
+  | {
+      kind: "category";
+      category: CategoryRecord;
+      posts: PostRecord[];
+      breadcrumbs: Breadcrumb[];
+      pagination: Pagination;
+    };
+
+interface Breadcrumb {
+  label: string;
+  href: string;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const requestedPath = `/${Astro.params.path ?? ""}`.replace(/\/+$/, "") || "/";
+const site =
+  (await getSetting<SiteSettings>(runtimeEnv.CFBLOG_DB, "site")) ?? {
+    title: "CFblog",
+    description: "A Cloudflare-native Astro blog.",
+    language: "en",
+    postsPerPage: 10
+  };
+
+const theme = await loadTheme(runtimeEnv.CFBLOG_DB);
+
+let page: PageModel | null = null;
+const post = await getPublishedPostByFullPath(runtimeEnv.CFBLOG_DB, requestedPath);
+
+if (post) {
+  const primaryCategory = await getPrimaryCategoryForPost(
+    runtimeEnv.CFBLOG_DB,
+    post.id
+  );
+  const categoryCrumbs = primaryCategory
+    ? (await getCategoryAncestors(runtimeEnv.CFBLOG_DB, primaryCategory.id)).map(
+        (category) => ({
+          label: category.name,
+          href: category.full_path
+        })
+      )
+    : [];
+
+  page = {
+    kind: "post",
+    post,
+    html: await renderMarkdown(post.markdown_body),
+    breadcrumbs: [
+      { label: "Home", href: "/" },
+      ...categoryCrumbs,
+      { label: post.title, href: post.full_path }
+    ]
+  };
+} else {
+  const category = await getCategoryByFullPath(runtimeEnv.CFBLOG_DB, requestedPath);
+
+  if (category) {
+    const totalPosts = await countPublishedPostsByCategoryId(
+      runtimeEnv.CFBLOG_DB,
+      category.id
+    );
+    const pagination = createPagination(
+      totalPosts,
+      parsePage(Astro.url.searchParams.get("page")),
+      site.postsPerPage
+    );
+    const breadcrumbs = [
+      { label: "Home", href: "/" },
+      ...(await getCategoryAncestors(runtimeEnv.CFBLOG_DB, category.id)).map(
+        (ancestor) => ({
+          label: ancestor.name,
+          href: ancestor.full_path
+        })
+      )
+    ];
+
+    page = {
+      kind: "category",
+      category,
+      posts: await listPublishedPostsByCategoryId(runtimeEnv.CFBLOG_DB, category.id, {
+        limit: pagination.perPage,
+        offset: pagination.offset
+      }),
+      breadcrumbs,
+      pagination
+    };
+  }
+}
+
+if (!page) {
+  const redirect = await getRedirectByFromPath(runtimeEnv.CFBLOG_DB, requestedPath);
+
+  if (redirect) {
+    return Astro.redirect(redirect.to_path, redirect.status_code);
+  }
+
+  return Astro.rewrite("/404");
+}
+
+const title =
+  page.kind === "post"
+    ? (page.post.seo_title ?? page.post.title)
+    : (page.category.seo_title ?? page.category.name);
+const description =
+  page.kind === "post"
+    ? (page.post.seo_description ?? page.post.excerpt ?? site.description)
+    : (page.category.seo_description ?? page.category.description ?? site.description);
+const canonicalUrl =
+  page.kind === "post" && page.post.canonical_url
+    ? page.post.canonical_url
+    : absoluteUrl({
+        siteUrl: runtimeEnv.SITE_URL,
+        path:
+          page.kind === "post"
+            ? page.post.full_path
+            : page.category.full_path
+      });
+const nav = await loadPublicNavigation(runtimeEnv.CFBLOG_DB);
+
+const jsonLd =
+  page.kind === "post"
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        headline: page.post.title,
+        description,
+        datePublished: page.post.published_at,
+        dateModified: page.post.updated_at,
+        author: page.post.author_name
+          ? {
+              "@type": "Person",
+              name: page.post.author_name
+            }
+          : undefined,
+        mainEntityOfPage: canonicalUrl
+      }
+    : {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: page.category.name,
+        description,
+        url: canonicalUrl
+      };
+---
+
+<html lang={site.language}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <ThemeHead theme={theme} />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    {
+      page.kind === "category" && page.pagination.hasPreviousPage && (
+        <link rel="prev" href={absoluteUrl({
+          siteUrl: runtimeEnv.SITE_URL,
+          path: pageHref(
+            page.category.full_path,
+            page.pagination.currentPage - 1
+          )
+        })} />
+      )
+    }
+    {
+      page.kind === "category" && page.pagination.hasNextPage && (
+        <link rel="next" href={absoluteUrl({
+          siteUrl: runtimeEnv.SITE_URL,
+          path: pageHref(
+            page.category.full_path,
+            page.pagination.currentPage + 1
+          )
+        })} />
+      )
+    }
+    <meta property="og:type" content={page.kind === "post" ? "article" : "website"} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    <title>{title} | {site.title}</title>
+  </head>
+  <body data-post-listing={theme.postListingStyle}>
+    <SiteHeader siteTitle={site.title} primaryNav={nav.primary} logoPublicPath={theme.logoPublicPath} />
+    <main class="shell">
+      <nav class="breadcrumbs" aria-label="Breadcrumbs">
+        {page.breadcrumbs.map((crumb, index) => (
+          <>
+            {index > 0 && <span aria-hidden="true">/</span>}
+            {index === page.breadcrumbs.length - 1 ? (
+              <span aria-current="page">{crumb.label}</span>
+            ) : (
+              <a href={crumb.href}>{crumb.label}</a>
+            )}
+          </>
+        ))}
+      </nav>
+
+      {
+        page.kind === "post" ? (
+          <article class="post">
+            <header>
+              <p class="eyebrow">Article</p>
+              <h1>{page.post.title}</h1>
+              {page.post.published_at && (
+                <time datetime={page.post.published_at}>
+                  {new Intl.DateTimeFormat(site.language, {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric"
+                  }).format(new Date(page.post.published_at))}
+                </time>
+              )}
+            </header>
+            <div class="content" set:html={page.html} />
+          </article>
+        ) : (
+          <section class="category">
+            <header>
+              <p class="eyebrow">Category</p>
+              <h1>{page.category.name}</h1>
+              {page.category.description && <p>{page.category.description}</p>}
+            </header>
+            {page.posts.length > 0 ? (
+              <ol>
+                {page.posts.map((post) => (
+                  <li>
+                    <a href={post.full_path}>{post.title}</a>
+                    {post.excerpt && <p>{post.excerpt}</p>}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p class="empty">No published posts in this category yet.</p>
+            )}
+            {page.pagination.totalPages > 1 && (
+              <nav class="pagination" aria-label="Category post pages">
+                {page.pagination.hasPreviousPage ? (
+                  <a
+                    href={pageHref(
+                      page.category.full_path,
+                      page.pagination.currentPage - 1
+                    )}
+                  >
+                    Newer
+                  </a>
+                ) : (
+                  <span>Newer</span>
+                )}
+                <p>
+                  Page {page.pagination.currentPage} of{" "}
+                  {page.pagination.totalPages}
+                </p>
+                {page.pagination.hasNextPage ? (
+                  <a
+                    href={pageHref(
+                      page.category.full_path,
+                      page.pagination.currentPage + 1
+                    )}
+                  >
+                    Older
+                  </a>
+                ) : (
+                  <span>Older</span>
+                )}
+              </nav>
+            )}
+          </section>
+        )
+      }
+    </main>
+    <SiteFooter footerNav={nav.footer} />
+  </body>
+</html>
+
+<style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .shell {
+    box-sizing: border-box;
+    width: min(100%, 860px);
+    margin: 0 auto;
+    padding: 40px 24px 72px;
+  }
+
+  .breadcrumbs,
+  .eyebrow,
+  time,
+  .pagination,
+  .empty {
+    font-family: var(--cf-font-ui);
+  }
+
+  .breadcrumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 56px;
+    color: color-mix(in srgb, var(--cf-text) 62%, var(--cf-muted));
+    font-size: 0.88rem;
+  }
+
+  .breadcrumbs a,
+  .breadcrumbs span {
+    color: inherit;
+  }
+
+  .breadcrumbs a {
+    text-decoration: none;
+  }
+
+  .breadcrumbs a:hover,
+  .category a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.16em;
+  }
+
+  .post header,
+  .category header {
+    margin-bottom: 36px;
+  }
+
+  .eyebrow {
+    margin: 0 0 10px;
+    color: var(--cf-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    margin: 0 0 16px;
+    font-size: clamp(2.6rem, 7vw, 5.8rem);
+    line-height: 0.98;
+  }
+
+  .post header p,
+  .category header p,
+  time,
+  .empty {
+    color: color-mix(in srgb, var(--cf-text) 55%, var(--cf-muted));
+  }
+
+  .post header p,
+  .category header p {
+    max-width: 56ch;
+    margin: 0;
+    font-size: 1.15rem;
+    line-height: 1.7;
+  }
+
+  .content {
+    font-size: 1.1rem;
+    line-height: 1.8;
+  }
+
+  .content :global(h2),
+  .content :global(h3) {
+    margin-top: 2.2em;
+    line-height: 1.12;
+  }
+
+  .content :global(a),
+  .category a {
+    color: var(--cf-accent);
+  }
+
+  .content :global(pre) {
+    overflow-x: auto;
+    border: 1px solid var(--cf-border);
+    padding: 16px;
+    background: var(--cf-code-bg);
+  }
+
+  ol {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    border-top: 1px solid var(--cf-border);
+    padding: 22px 0;
+  }
+
+  .category a {
+    font-size: clamp(1.45rem, 3vw, 2.2rem);
+    text-decoration: none;
+  }
+
+  li p {
+    max-width: 58ch;
+    margin: 10px 0 0;
+    color: color-mix(in srgb, var(--cf-text) 55%, var(--cf-muted));
+    line-height: 1.6;
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-top: 26px;
+    color: color-mix(in srgb, var(--cf-text) 58%, var(--cf-muted));
+    font-size: 0.92rem;
+  }
+
+  .pagination a,
+  .pagination span {
+    border: 1px solid var(--cf-border);
+    padding: 8px 11px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .pagination span {
+    opacity: 0.45;
+  }
+
+  .pagination p {
+    margin: 0;
+  }
+
+  @media (max-width: 640px) {
+    .pagination {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+
+  body[data-post-listing="cards"] .category ol {
+    gap: 14px;
+  }
+
+  body[data-post-listing="cards"] .category li {
+    border: 1px solid var(--cf-border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    background: var(--cf-surface);
+    border-top: none;
+  }
+</style>

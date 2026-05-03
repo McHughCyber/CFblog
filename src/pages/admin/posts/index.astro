@@ -1,0 +1,293 @@
+---
+import { env } from "cloudflare:workers";
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import EmptyState from "../../../components/admin/EmptyState.astro";
+import { listCategories } from "../../../lib/db/categories";
+import { countAdminPosts, listAdminPosts } from "../../../lib/db/posts";
+import type { PostStatus } from "../../../lib/db/types";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const statuses: PostStatus[] = ["draft", "published", "scheduled", "archived"];
+
+const statusParam = Astro.url.searchParams.get("status");
+const status =
+  statusParam && statuses.includes(statusParam as PostStatus)
+    ? (statusParam as PostStatus)
+    : null;
+const categoryId = Astro.url.searchParams.get("categoryId");
+const q = Astro.url.searchParams.get("q")?.trim() || null;
+
+const posts = await listAdminPosts(runtimeEnv.CFBLOG_DB, {
+  status,
+  categoryId,
+  q,
+  limit: 100,
+  offset: 0
+});
+
+const total = await countAdminPosts(runtimeEnv.CFBLOG_DB, {
+  status,
+  categoryId,
+  q
+});
+
+const categories = await listCategories(runtimeEnv.CFBLOG_DB);
+---
+
+<AdminLayout title="Posts">
+  <div class="page-head">
+    <a class="new-post" href="/admin/posts/new">New post</a>
+  </div>
+
+  <form class="filters" method="get" action="/admin/posts">
+    <label>
+      Status
+      <select name="status">
+        <option value="" selected={!status}>Any</option>
+        <option value="draft" selected={status === "draft"}>Draft</option>
+        <option value="published" selected={status === "published"}>Published</option>
+        <option value="scheduled" selected={status === "scheduled"}>Scheduled</option>
+        <option value="archived" selected={status === "archived"}>Archived</option>
+      </select>
+    </label>
+    <label>
+      Category
+      <select name="categoryId">
+        <option value="" selected={!categoryId}>Any</option>
+        {
+          categories.map((c) => (
+            <option value={c.id} selected={categoryId === c.id}>
+              {c.name}
+            </option>
+          ))
+        }
+      </select>
+    </label>
+    <label class="grow">
+      Search
+      <input type="search" name="q" placeholder="Title, slug, or path" value={q ?? ""} />
+    </label>
+    <button type="submit" class="btn">Apply</button>
+    <a class="btn secondary" href="/admin/posts">Reset</a>
+  </form>
+
+  <p class="meta">{total} post{total === 1 ? "" : "s"}</p>
+
+  {
+    posts.length === 0 ? (
+      <EmptyState
+        title="No posts match"
+        detail="Try changing filters or create a new post."
+      />
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Path</th>
+              <th>Updated</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {posts.map((p) => (
+              <tr>
+                <td>
+                  <a href={`/admin/posts/${p.id}/edit`}>{p.title}</a>
+                </td>
+                <td>
+                  <span class:list={["pill", p.status]}>{p.status}</span>
+                </td>
+                <td class="mono">{p.full_path}</td>
+                <td>{p.updated_at}</td>
+                <td class="actions">
+                  <a href={`/admin/posts/${p.id}/edit`}>Edit</a>
+                  <a href={`/admin/posts/${p.id}/preview`}>Preview</a>
+                  {p.status === "published" && (
+                    <a href={p.full_path} target="_blank" rel="noopener noreferrer">
+                      View live
+                    </a>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</AdminLayout>
+
+<style>
+  .page-head {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+  }
+
+  .new-post {
+    display: inline-block;
+    padding: 9px 16px;
+    border-radius: 6px;
+    background: #2f6f4e;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .new-post:hover {
+    background: #285f43;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    align-items: flex-end;
+    margin-bottom: 12px;
+    padding: 14px;
+    background: #fff;
+    border: 1px solid #d8d2c7;
+    border-radius: 8px;
+  }
+
+  .filters label {
+    display: grid;
+    gap: 4px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #354139;
+  }
+
+  .filters label.grow {
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .filters select,
+  .filters input[type="search"] {
+    padding: 7px 9px;
+    border: 1px solid #c9c2b6;
+    border-radius: 6px;
+    font: inherit;
+    min-width: 140px;
+  }
+
+  .filters input[type="search"] {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid #b8b0a3;
+    background: #f0ebe3;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    font: inherit;
+  }
+
+  .btn.secondary {
+    background: #fff;
+  }
+
+  .meta {
+    margin: 0 0 10px;
+    color: #6d746e;
+    font-size: 0.88rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    background: #fff;
+    border: 1px solid #d8d2c7;
+    border-radius: 8px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #ece8df;
+  }
+
+  th {
+    background: #f7f4ee;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6d746e;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  td a {
+    color: #2f6f4e;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  td a:hover {
+    text-decoration: underline;
+  }
+
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.84rem;
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: capitalize;
+    background: #ece8df;
+    color: #354139;
+  }
+
+  .pill.published {
+    background: #d4ebe0;
+    color: #1f4d33;
+  }
+
+  .pill.draft {
+    background: #e8e4dc;
+  }
+
+  .pill.scheduled {
+    background: #e4e8f5;
+    color: #2a3360;
+  }
+
+  .pill.archived {
+    background: #e0e0e0;
+    color: #444;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    white-space: nowrap;
+  }
+</style>

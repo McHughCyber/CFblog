@@ -1,0 +1,108 @@
+---
+import { env } from "cloudflare:workers";
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { countMenuItems, listMenus } from "../../../lib/db/menus";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const menus = await listMenus(runtimeEnv.CFBLOG_DB);
+const rows = await Promise.all(
+  menus.map(async (m) => ({
+    ...m,
+    itemCount: await countMenuItems(runtimeEnv.CFBLOG_DB, m.id)
+  }))
+);
+---
+
+<AdminLayout title="Menus">
+  <p class="intro">
+    Primary and footer menus are rendered on the public site. Edit items to change labels, targets, nesting, and
+    sort order.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Key</th>
+          <th>Items</th>
+          <th />
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((m) => (
+            <tr>
+              <td>{m.name}</td>
+              <td class="mono">{m.menu_key}</td>
+              <td>{m.itemCount}</td>
+              <td>
+                <a href={`/admin/menus/${m.menu_key}`}>Edit items</a>
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>
+
+<style>
+  .intro {
+    max-width: 52rem;
+    margin: 0 0 20px;
+    color: #536057;
+    line-height: 1.55;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    background: #fff;
+    border: 1px solid #d8d2c7;
+    border-radius: 8px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.94rem;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #ece8df;
+  }
+
+  th {
+    background: #f7f4ee;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6d746e;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.86rem;
+  }
+
+  td a {
+    color: #2f6f4e;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  td a:hover {
+    text-decoration: underline;
+  }
+</style>

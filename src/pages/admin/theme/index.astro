@@ -1,0 +1,361 @@
+---
+import { env } from "cloudflare:workers";
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import FormField from "../../../components/admin/FormField.astro";
+import { loadTheme } from "../../../lib/theme/load";
+import type { HomepageLayout, PostListingStyle, ThemeSettings, TypographyPreset } from "../../../lib/theme/schema";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const theme = await loadTheme(runtimeEnv.CFBLOG_DB);
+
+const typoOptions: { value: TypographyPreset; label: string }[] = [
+  { value: "system", label: "System UI (sans-serif)" },
+  { value: "serif", label: "Serif editorial" },
+  { value: "mono", label: "Monospace" },
+  { value: "newsprint", label: "Newsreader serif" }
+];
+
+const homeOptions: { value: HomepageLayout; label: string }[] = [
+  { value: "classic", label: "Classic stacked" },
+  { value: "magazine", label: "Magazine two-column (homepage)" }
+];
+
+const listingOptions: { value: PostListingStyle; label: string }[] = [
+  { value: "list", label: "Ruled list" },
+  { value: "cards", label: "Cards" }
+];
+
+const initial: ThemeSettings = theme;
+---
+
+<AdminLayout title="Theme">
+  <p class="intro">
+    Colours and typography feed public CSS variables (<code class="mono">--cf-*</code>). Logo and favicon must be
+    existing media paths from <a href="/admin/media">Media</a> (for example <code class="mono">/media/…</code>
+    ). Custom CSS is appended after variables; keep it small and avoid closing <code class="mono">&lt;/style&gt;</code>
+    fragments.
+  </p>
+
+  <form class="theme-form" id="theme-form">
+    <section class="panel" aria-labelledby="colours-heading">
+      <h2 id="colours-heading">Colours</h2>
+      <div class="colour-grid">
+        <FormField label="Accent" for="colour-accent">
+          <input id="colour-accent" name="accentColor" type="color" value={initial.accentColor} />
+        </FormField>
+        <FormField label="Background" for="colour-bg">
+          <input id="colour-bg" name="backgroundColor" type="color" value={initial.backgroundColor} />
+        </FormField>
+        <FormField label="Surface" for="colour-surface">
+          <input id="colour-surface" name="surfaceColor" type="color" value={initial.surfaceColor} />
+        </FormField>
+        <FormField label="Text" for="colour-text">
+          <input id="colour-text" name="textColor" type="color" value={initial.textColor} />
+        </FormField>
+        <FormField label="Border" for="colour-border">
+          <input id="colour-border" name="borderColor" type="color" value={initial.borderColor} />
+        </FormField>
+        <FormField label="Muted text" for="colour-muted">
+          <input id="colour-muted" name="mutedTextColor" type="color" value={initial.mutedTextColor} />
+        </FormField>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="layout-heading">
+      <h2 id="layout-heading">Layout and type</h2>
+      <FormField label="Typography" for="field-typography">
+        <select id="field-typography" name="typographyPreset">
+          {
+            typoOptions.map((o) => (
+              <option value={o.value} selected={initial.typographyPreset === o.value}>
+                {o.label}
+              </option>
+            ))
+          }
+        </select>
+      </FormField>
+      <FormField label="Homepage layout" for="field-home">
+        <select id="field-home" name="homepageLayout">
+          {
+            homeOptions.map((o) => (
+              <option value={o.value} selected={initial.homepageLayout === o.value}>
+                {o.label}
+              </option>
+            ))
+          }
+        </select>
+      </FormField>
+      <FormField label="Post listing (home and categories)" for="field-listing">
+        <select id="field-listing" name="postListingStyle">
+          {
+            listingOptions.map((o) => (
+              <option value={o.value} selected={initial.postListingStyle === o.value}>
+                {o.label}
+              </option>
+            ))
+          }
+        </select>
+      </FormField>
+    </section>
+
+    <section class="panel" aria-labelledby="brand-heading">
+      <h2 id="brand-heading">Brand assets</h2>
+      <FormField
+        label="Logo public path"
+        for="field-logo"
+        hint="Optional. Must match /media/{uuid} from your library."
+      >
+        <input
+          id="field-logo"
+          name="logoPublicPath"
+          type="text"
+          placeholder="/media/…"
+          value={initial.logoPublicPath ?? ""}
+        />
+      </FormField>
+      <FormField
+        label="Favicon public path"
+        for="field-favicon"
+        hint="Optional. Square PNG or WebP from Media works well."
+      >
+        <input
+          id="field-favicon"
+          name="faviconPublicPath"
+          type="text"
+          placeholder="/media/…"
+          value={initial.faviconPublicPath ?? ""}
+        />
+      </FormField>
+    </section>
+
+    <section class="panel" aria-labelledby="css-heading">
+      <h2 id="css-heading">Custom CSS</h2>
+      <p class="warn" id="custom-css-warn" hidden>
+        Custom CSS runs on every public page. Mistakes can break layout or, in extreme cases, create markup injection
+        if you paste non-CSS content. The server rejects obvious <code class="mono">&lt;/style&gt;</code> and
+        <code class="mono">&lt;script&gt;</code> patterns.
+      </p>
+      <FormField label="Additional rules" for="field-custom-css">
+        <textarea id="field-custom-css" name="customCss" rows="10" class="mono-input">{initial.customCss}</textarea>
+      </FormField>
+    </section>
+
+    <div class="actions">
+      <button type="submit" class="btn primary">Save theme</button>
+      <button type="button" class="btn danger" id="theme-reset">Reset to defaults</button>
+    </div>
+    <p class="status" id="theme-status" role="status" />
+  </form>
+</AdminLayout>
+
+<script>
+  const form = document.getElementById("theme-form");
+  const statusEl = document.getElementById("theme-status");
+  const resetBtn = document.getElementById("theme-reset");
+  const customCss = document.getElementById("field-custom-css");
+  const warnEl = document.getElementById("custom-css-warn");
+
+  function setStatus(message: string, isError: boolean) {
+    if (!(statusEl instanceof HTMLElement)) {
+      return;
+    }
+    statusEl.textContent = message;
+    statusEl.style.color = isError ? "#8b2942" : "#354139";
+  }
+
+  function syncWarn() {
+    if (!(customCss instanceof HTMLTextAreaElement) || !(warnEl instanceof HTMLElement)) {
+      return;
+    }
+    warnEl.hidden = customCss.value.trim().length === 0;
+  }
+
+  customCss?.addEventListener("input", syncWarn);
+  syncWarn();
+
+  function colourValue(id: string): string {
+    const el = document.getElementById(id);
+    return el instanceof HTMLInputElement ? el.value : "";
+  }
+
+  function selectValue(id: string): string {
+    const el = document.getElementById(id);
+    return el instanceof HTMLSelectElement ? el.value : "";
+  }
+
+  function optionalMediaPath(id: string): string | null {
+    const el = document.getElementById(id);
+    if (!(el instanceof HTMLInputElement)) {
+      return null;
+    }
+    const v = el.value.trim();
+    return v.length ? v : null;
+  }
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const body = {
+      accentColor: colourValue("colour-accent"),
+      backgroundColor: colourValue("colour-bg"),
+      surfaceColor: colourValue("colour-surface"),
+      textColor: colourValue("colour-text"),
+      borderColor: colourValue("colour-border"),
+      mutedTextColor: colourValue("colour-muted"),
+      typographyPreset: selectValue("field-typography"),
+      homepageLayout: selectValue("field-home"),
+      postListingStyle: selectValue("field-listing"),
+      logoPublicPath: optionalMediaPath("field-logo"),
+      faviconPublicPath: optionalMediaPath("field-favicon"),
+      customCss: customCss instanceof HTMLTextAreaElement ? customCss.value : ""
+    };
+
+    setStatus("Saving…", false);
+    const res = await fetch("/api/admin/theme", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    });
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      setStatus(data.error || "Save failed.", true);
+      return;
+    }
+    setStatus("Saved. Reload the public site to confirm.", false);
+  });
+
+  resetBtn?.addEventListener("click", async () => {
+    if (!window.confirm("Reset all theme fields to template defaults?")) {
+      return;
+    }
+    setStatus("Resetting…", false);
+    const res = await fetch("/api/admin/theme", { method: "DELETE", credentials: "same-origin" });
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      setStatus(data.error || "Reset failed.", true);
+      return;
+    }
+    window.location.reload();
+  });
+</script>
+
+<style>
+  .intro {
+    max-width: 52rem;
+    margin: 0 0 20px;
+    color: #536057;
+    line-height: 1.55;
+  }
+
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.88em;
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid #d8d2c7;
+    border-radius: 10px;
+    padding: 18px 20px 20px;
+    margin-bottom: 18px;
+  }
+
+  .panel h2 {
+    margin: 0 0 14px;
+    font-size: 1.05rem;
+  }
+
+  .colour-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+  }
+
+  input[type="color"] {
+    width: 100%;
+    height: 40px;
+    padding: 2px;
+    border: 1px solid #c9c2b6;
+    border-radius: 6px;
+    background: #fff;
+  }
+
+  select,
+  input[type="text"],
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border: 1px solid #c9c2b6;
+    border-radius: 6px;
+    font: inherit;
+    background: #fff;
+  }
+
+  .mono-input {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.86rem;
+    line-height: 1.45;
+  }
+
+  .warn {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    background: #f8f1e4;
+    border: 1px solid #d9c49a;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    color: #5c4a2a;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .btn {
+    border: 1px solid #b8b0a3;
+    background: #f0ebe3;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #1f2523;
+    font: inherit;
+  }
+
+  .btn:hover {
+    background: #e4dfd4;
+  }
+
+  .btn.primary {
+    background: #2f6f4e;
+    border-color: #2a5d42;
+    color: #fff;
+  }
+
+  .btn.primary:hover {
+    background: #285f43;
+  }
+
+  .btn.danger {
+    border-color: #c47a7a;
+    color: #7a2a2a;
+  }
+
+  .btn.danger:hover {
+    background: #f5e4e4;
+  }
+
+  .status {
+    margin-top: 14px;
+    min-height: 1.2em;
+    font-size: 0.9rem;
+  }
+</style>

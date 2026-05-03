@@ -1,0 +1,69 @@
+---
+import { env } from "cloudflare:workers";
+import MenuItemForm from "../../../../../../components/admin/MenuItemForm.astro";
+import { listCategories } from "../../../../../../lib/db/categories";
+import {
+  getMenuByKey,
+  getMenuItemById,
+  listDescendantMenuItemIds
+} from "../../../../../../lib/db/menus";
+import { listAdminPosts } from "../../../../../../lib/db/posts";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const menuKey = Astro.params.menuKey;
+const itemId = Astro.params.itemId;
+
+if (!menuKey || !itemId) {
+  return Astro.redirect("/admin/menus", 302);
+}
+
+const menu = await getMenuByKey(runtimeEnv.CFBLOG_DB, menuKey);
+if (!menu) {
+  return Astro.redirect("/admin/menus", 302);
+}
+
+const item = await getMenuItemById(runtimeEnv.CFBLOG_DB, itemId);
+if (!item || item.menu_id !== menu.id) {
+  return Astro.redirect(`/admin/menus/${menuKey}`, 302);
+}
+
+const blocked = new Set<string>([
+  item.id,
+  ...(await listDescendantMenuItemIds(runtimeEnv.CFBLOG_DB, menu.id, item.id))
+]);
+
+const parentOptions = menu.items
+  .filter((i) => !blocked.has(i.id))
+  .map((i) => ({ id: i.id, label: i.label }));
+
+const posts = await listAdminPosts(runtimeEnv.CFBLOG_DB, { limit: 150, offset: 0 });
+const postOptions = posts.map((p) => ({ id: p.id, title: p.title }));
+const categories = await listCategories(runtimeEnv.CFBLOG_DB);
+const categoryOptions = categories.map((c) => ({
+  id: c.id,
+  name: c.name,
+  full_path: c.full_path
+}));
+---
+
+<MenuItemForm
+  menuKey={menuKey}
+  menuName={menu.name}
+  mode="edit"
+  itemId={itemId}
+  parentOptions={parentOptions}
+  postOptions={postOptions}
+  categoryOptions={categoryOptions}
+  initial={{
+    label: item.label,
+    item_type: item.item_type,
+    target: item.target,
+    parent_id: item.parent_id,
+    sort_order: item.sort_order,
+    open_in_new_tab: item.open_in_new_tab
+  }}
+/>

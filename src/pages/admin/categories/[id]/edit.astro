@@ -1,0 +1,50 @@
+---
+import { env } from "cloudflare:workers";
+import CategoryEditor from "../../../../components/admin/CategoryEditor.astro";
+import {
+  getCategoryById,
+  listCategories,
+  listDescendantCategoryIds
+} from "../../../../lib/db/categories";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const id = Astro.params.id;
+
+if (!id) {
+  return Astro.redirect("/admin/categories", 302);
+}
+
+const category = await getCategoryById(runtimeEnv.CFBLOG_DB, id);
+if (!category) {
+  return Astro.redirect("/admin/categories", 302);
+}
+
+const blocked = new Set<string>([id, ...(await listDescendantCategoryIds(runtimeEnv.CFBLOG_DB, id))]);
+const all = await listCategories(runtimeEnv.CFBLOG_DB);
+const parentOptions = all
+  .filter((c) => !blocked.has(c.id))
+  .map((c) => ({
+    id: c.id,
+    name: c.name,
+    full_path: c.full_path
+  }));
+---
+
+<CategoryEditor
+  mode="edit"
+  categoryId={id}
+  parentOptions={parentOptions}
+  initial={{
+    name: category.name,
+    slug: category.slug,
+    parent_id: category.parent_id,
+    description: category.description,
+    seo_title: category.seo_title,
+    seo_description: category.seo_description,
+    sort_order: category.sort_order
+  }}
+/>

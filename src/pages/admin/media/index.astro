@@ -1,0 +1,444 @@
+---
+import { env } from "cloudflare:workers";
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import EmptyState from "../../../components/admin/EmptyState.astro";
+import { countMediaAssets, listMediaAssets } from "../../../lib/db/media";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const limit = 60;
+const assets = await listMediaAssets(runtimeEnv.CFBLOG_DB, { limit, offset: 0 });
+const total = await countMediaAssets(runtimeEnv.CFBLOG_DB);
+---
+
+<AdminLayout title="Media">
+  <p class="intro">
+    Images are stored in R2 and served at <code class="mono">/media/&lt;id&gt;</code> only when a matching row exists
+    in the database. SVG uploads are disabled for safety.
+  </p>
+
+  <section class="upload-panel" aria-labelledby="upload-heading">
+    <h2 id="upload-heading">Upload</h2>
+    <form class="upload-form" data-upload-form>
+      <label class="file-label">
+        <span class="btn">Choose image file</span>
+        <input type="file" name="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" required />
+      </label>
+      <button type="submit" class="btn primary">Upload</button>
+    </form>
+    <p class="upload-status" data-upload-status role="status" />
+  </section>
+
+  {
+    assets.length === 0 ? (
+      <EmptyState
+        title="No media yet"
+        detail="Upload a JPEG, PNG, GIF, WebP, or AVIF file. It will appear in this list with a stable public URL."
+      />
+    ) : (
+      <>
+        <p class="meta">
+          Showing {assets.length} of {total} asset{total === 1 ? "" : "s"}
+        </p>
+        <div class="grid">
+          {assets.map((a) => (
+            <article class="card" data-asset-id={a.id} data-public-path={a.public_path}>
+              <a class="thumb-wrap" href={a.public_path} target="_blank" rel="noopener noreferrer">
+                <img src={a.public_path} alt="" width="120" height="120" loading="lazy" class="thumb" />
+              </a>
+              <div class="card-body">
+                <p class="file-line">
+                  <span class="mono name">{a.file_name}</span>
+                  <span class="muted">{a.content_type}</span>
+                </p>
+                <p class="muted small">{a.public_path}</p>
+                <label class="field">
+                  Alt text
+                  <input type="text" data-alt value={a.alt_text ?? ""} />
+                </label>
+                <label class="field">
+                  Caption
+                  <input type="text" data-caption value={a.caption ?? ""} />
+                </label>
+                <div class="actions">
+                  <button type="button" class="btn small" data-save-meta>
+                    Save description
+                  </button>
+                  <button type="button" class="btn small" data-copy-md>
+                    Copy Markdown
+                  </button>
+                  <button type="button" class="btn small danger" data-delete>
+                    Delete
+                  </button>
+                </div>
+                <p class="row-status" data-row-status />
+              </div>
+            </article>
+          ))}
+        </div>
+      </>
+    )
+  }
+</AdminLayout>
+
+<script>
+  const uploadForm = document.querySelector("[data-upload-form]");
+  const uploadStatus = document.querySelector("[data-upload-status]");
+
+  function setUploadStatus(message: string, isError: boolean) {
+    if (!(uploadStatus instanceof HTMLElement)) {
+      return;
+    }
+    uploadStatus.textContent = message;
+    uploadStatus.style.color = isError ? "#8b2942" : "#354139";
+  }
+
+  uploadForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!(uploadForm instanceof HTMLFormElement)) {
+      return;
+    }
+    const input = uploadForm.querySelector('input[type="file"]');
+    if (!(input instanceof HTMLInputElement) || !input.files?.length) {
+      setUploadStatus("Choose a file first.", true);
+      return;
+    }
+    const fd = new FormData();
+    fd.set("file", input.files[0]);
+    setUploadStatus("Uploading…", false);
+    try {
+      const res = await fetch("/api/admin/media", {
+        method: "POST",
+        body: fd,
+        credentials: "same-origin"
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setUploadStatus(data.error || "Upload failed.", true);
+        return;
+      }
+      setUploadStatus("Done. Reloading…", false);
+      window.location.reload();
+    } catch {
+      setUploadStatus("Network error.", true);
+    }
+  });
+
+  function rowStatus(card: Element): HTMLElement | null {
+    const el = card.querySelector("[data-row-status]");
+    return el instanceof HTMLElement ? el : null;
+  }
+
+  function markdownForCard(card: Element): string {
+    const altInput = card.querySelector("[data-alt]");
+    const alt =
+      altInput instanceof HTMLInputElement ? altInput.value.trim() || "image" : "image";
+    const path = card.getAttribute("data-public-path");
+    if (!path) {
+      return `![${alt}](.)`;
+    }
+    return `![${alt}](${path})`;
+  }
+
+  document.querySelectorAll("[data-save-meta]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const card = btn.closest("[data-asset-id]");
+      if (!card) {
+        return;
+      }
+      const id = card.getAttribute("data-asset-id");
+      const altEl = card.querySelector("[data-alt]");
+      const capEl = card.querySelector("[data-caption]");
+      const status = rowStatus(card);
+      if (!id || !(altEl instanceof HTMLInputElement) || !(capEl instanceof HTMLInputElement)) {
+        return;
+      }
+      if (status) {
+        status.textContent = "Saving…";
+        status.style.color = "#354139";
+      }
+      const res = await fetch(`/api/admin/media/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          altText: altEl.value.trim() || null,
+          caption: capEl.value.trim() || null
+        })
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        if (status) {
+          status.textContent = data.error || "Save failed.";
+          status.style.color = "#8b2942";
+        }
+        return;
+      }
+      if (status) {
+        status.textContent = "Saved.";
+        status.style.color = "#2f6f4e";
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-copy-md]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const card = btn.closest("[data-asset-id]");
+      if (!card) {
+        return;
+      }
+      const md = markdownForCard(card);
+      const status = rowStatus(card);
+      try {
+        await navigator.clipboard.writeText(md);
+        if (status) {
+          status.textContent = "Markdown copied.";
+          status.style.color = "#2f6f4e";
+        }
+      } catch {
+        if (status) {
+          status.textContent = "Could not copy.";
+          status.style.color = "#8b2942";
+        }
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-delete]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const card = btn.closest("[data-asset-id]");
+      if (!card) {
+        return;
+      }
+      const id = card.getAttribute("data-asset-id");
+      if (!id || !window.confirm("Delete this asset from R2 and the library?")) {
+        return;
+      }
+      const status = rowStatus(card);
+      if (status) {
+        status.textContent = "Deleting…";
+        status.style.color = "#354139";
+      }
+      const res = await fetch(`/api/admin/media/${id}`, {
+        method: "DELETE",
+        credentials: "same-origin"
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        references?: { id: string; title: string }[];
+      };
+      if (res.status === 409 && data.references?.length) {
+        const titles = data.references.map((r) => r.title).join(", ");
+        if (status) {
+          status.textContent = `In use by posts: ${titles}. Remove links first.`;
+          status.style.color = "#8b2942";
+        }
+        return;
+      }
+      if (!res.ok) {
+        if (status) {
+          status.textContent = data.error || "Delete failed.";
+          status.style.color = "#8b2942";
+        }
+        return;
+      }
+      card.remove();
+    });
+  });
+</script>
+
+<style>
+  .intro {
+    max-width: 52rem;
+    margin: 0 0 18px;
+    color: #536057;
+    line-height: 1.55;
+  }
+
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.88em;
+  }
+
+  .upload-panel {
+    background: #fff;
+    border: 1px solid #d8d2c7;
+    border-radius: 10px;
+    padding: 16px 18px 18px;
+    margin-bottom: 22px;
+  }
+
+  .upload-panel h2 {
+    margin: 0 0 12px;
+    font-size: 1.05rem;
+  }
+
+  .upload-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .file-label input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  .file-label {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .upload-status {
+    margin: 10px 0 0;
+    min-height: 1.2em;
+    font-size: 0.9rem;
+  }
+
+  .meta {
+    margin: 0 0 12px;
+    color: #536057;
+    font-size: 0.92rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .card {
+    display: flex;
+    gap: 14px;
+    background: #fff;
+    border: 1px solid #d8d2c7;
+    border-radius: 10px;
+    padding: 12px;
+    align-items: flex-start;
+  }
+
+  .thumb-wrap {
+    flex-shrink: 0;
+    display: block;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ece8df;
+    background: #f7f4ee;
+  }
+
+  .thumb {
+    display: block;
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+  }
+
+  .card-body {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .file-line {
+    margin: 0 0 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+  }
+
+  .name {
+    word-break: break-all;
+  }
+
+  .muted {
+    color: #6d746e;
+  }
+
+  .small {
+    font-size: 0.82rem;
+    margin: 0 0 8px;
+  }
+
+  .field {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #354139;
+  }
+
+  .field input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 4px;
+    padding: 6px 8px;
+    border: 1px solid #c9c2b6;
+    border-radius: 6px;
+    font: inherit;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .row-status {
+    margin: 8px 0 0;
+    font-size: 0.82rem;
+    min-height: 1.1em;
+  }
+
+  .btn {
+    border: 1px solid #b8b0a3;
+    background: #f0ebe3;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #1f2523;
+    font: inherit;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn:hover {
+    background: #e4dfd4;
+  }
+
+  .btn.primary {
+    background: #2f6f4e;
+    border-color: #2a5d42;
+    color: #fff;
+  }
+
+  .btn.primary:hover {
+    background: #285f43;
+  }
+
+  .btn.small {
+    padding: 4px 10px;
+    font-size: 0.82rem;
+  }
+
+  .btn.danger {
+    border-color: #c47a7a;
+    color: #7a2a2a;
+  }
+
+  .btn.danger:hover {
+    background: #f5e4e4;
+  }
+</style>

@@ -1,0 +1,869 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import FormField from "./FormField.astro";
+
+interface CategoryOption {
+  id: string;
+  name: string;
+  full_path: string;
+}
+
+interface RevisionSummary {
+  id: string;
+  created_at: string;
+  revision_note: string | null;
+}
+
+interface Props {
+  mode: "new" | "edit";
+  postId: string | null;
+  categories: CategoryOption[];
+  post: {
+    id: string;
+    title: string;
+    slug: string;
+    full_path: string;
+    markdown_body: string;
+    excerpt: string | null;
+    status: string;
+    published_at: string | null;
+    scheduled_at: string | null;
+    seo_title: string | null;
+    seo_description: string | null;
+    canonical_url: string | null;
+    robots_directive: string | null;
+    author_name: string | null;
+  } | null;
+  assignedCategories: { categoryId: string; isPrimary: boolean }[];
+  revisions: RevisionSummary[];
+}
+
+const { mode, postId, categories, post, assignedCategories, revisions } = Astro.props;
+
+const title = mode === "new" ? "New post" : `Edit: ${post?.title ?? "Post"}`;
+
+const payload = {
+  postId,
+  mode,
+  post,
+  assignedCategories
+};
+
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) {
+    return "";
+  }
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const initial = post ?? {
+  id: "",
+  title: "",
+  slug: "",
+  full_path: "",
+  markdown_body: "",
+  excerpt: null,
+  status: "draft",
+  published_at: null,
+  scheduled_at: null,
+  seo_title: null,
+  seo_description: null,
+  canonical_url: null,
+  robots_directive: "index,follow",
+  author_name: null
+};
+
+const assigned = assignedCategories.length
+  ? assignedCategories
+  : categories.length === 1
+    ? [{ categoryId: categories[0].id, isPrimary: true }]
+    : [];
+---
+
+<AdminLayout title={title}>
+  <div class="toolbar">
+    <a class="back" href="/admin/posts">All posts</a>
+    {
+      mode === "edit" && postId && (
+        <a class="preview" href={`/admin/posts/${postId}/preview`} target="_blank" rel="noopener noreferrer">
+          Preview on site
+        </a>
+      )
+    }
+  </div>
+
+  <div class="editor-grid">
+    <section class="panel main-panel" aria-labelledby="editor-main-heading">
+      <h2 id="editor-main-heading" class="sr-only">Post content</h2>
+
+      <div class="field-row two">
+        <FormField label="Title" for="field-title">
+          <input id="field-title" name="title" type="text" value={initial.title} required />
+        </FormField>
+        <FormField label="Slug" for="field-slug" hint="Lowercase letters, numbers, and hyphens.">
+          <input id="field-slug" name="slug" type="text" value={initial.slug} required />
+        </FormField>
+      </div>
+
+      <FormField label="Full path" for="field-full-path" hint="Public URL path, for example /getting-started/my-article">
+        <input id="field-full-path" name="full_path" type="text" value={initial.full_path} required />
+      </FormField>
+
+      <FormField label="Excerpt" for="field-excerpt">
+        <textarea id="field-excerpt" name="excerpt" rows="2">{initial.excerpt ?? ""}</textarea>
+      </FormField>
+
+      <div class="field-row two">
+        <FormField label="Status" for="field-status">
+          <select id="field-status" name="status">
+            <option value="draft" selected={initial.status === "draft"}>Draft</option>
+            <option value="published" selected={initial.status === "published"}>Published</option>
+            <option value="scheduled" selected={initial.status === "scheduled"}>Scheduled</option>
+            <option value="archived" selected={initial.status === "archived"}>Archived</option>
+          </select>
+        </FormField>
+        <FormField label="Author display name" for="field-author">
+          <input id="field-author" name="author_name" type="text" value={initial.author_name ?? ""} />
+        </FormField>
+      </div>
+
+      <div class="field-row two">
+        <FormField label="Publish date" for="field-published" hint="Optional; defaults to now when publishing.">
+          <input
+            id="field-published"
+            name="published_at"
+            type="datetime-local"
+            value={toDatetimeLocal(initial.published_at)}
+          />
+        </FormField>
+        <FormField label="Scheduled date" for="field-scheduled" hint="Required when status is Scheduled.">
+          <input
+            id="field-scheduled"
+            name="scheduled_at"
+            type="datetime-local"
+            value={toDatetimeLocal(initial.scheduled_at)}
+          />
+        </FormField>
+      </div>
+
+      <fieldset class="categories-fieldset">
+        <legend>Categories</legend>
+        <p class="fieldset-hint">Pick at least one category with exactly one marked primary, or clear all for a draft-only post.</p>
+        <ul class="category-list">
+          {
+            categories.map((c) => {
+              const row = assigned.find((a) => a.categoryId === c.id);
+              const checked = Boolean(row);
+              const primary = row?.isPrimary ?? false;
+              return (
+                <li>
+                  <label>
+                    <input type="checkbox" name="cat" value={c.id} checked={checked} data-category-checkbox />
+                    <span>{c.name}</span>
+                    <span class="muted">{c.full_path}</span>
+                  </label>
+                  <label class="primary-label">
+                    <input type="radio" name="primary_cat" value={c.id} checked={primary} data-primary-radio />
+                    Primary
+                  </label>
+                </li>
+              );
+            })
+          }
+        </ul>
+      </fieldset>
+
+      <details class="seo-panel">
+        <summary>SEO</summary>
+        <FormField label="SEO title" for="field-seo-title">
+          <input id="field-seo-title" name="seo_title" type="text" value={initial.seo_title ?? ""} />
+        </FormField>
+        <FormField label="SEO description" for="field-seo-desc">
+          <textarea id="field-seo-desc" name="seo_description" rows="3">{initial.seo_description ?? ""}</textarea>
+        </FormField>
+        <FormField label="Canonical URL" for="field-canonical">
+          <input id="field-canonical" name="canonical_url" type="url" value={initial.canonical_url ?? ""} />
+        </FormField>
+        <FormField label="Robots" for="field-robots" hint="For example index,follow">
+          <input id="field-robots" name="robots_directive" type="text" value={initial.robots_directive ?? ""} />
+        </FormField>
+      </details>
+
+      <FormField label="Markdown" for="field-markdown">
+        <textarea id="field-markdown" name="markdown_body" rows="18" class="markdown-input" required>
+          {initial.markdown_body}
+        </textarea>
+      </FormField>
+
+      <details class="media-panel">
+        <summary>Media library</summary>
+        <p class="media-hint">
+          Insert an image reference from uploaded media. Opens the same list as the Media admin page.
+        </p>
+        <div class="media-toolbar">
+          <button type="button" class="btn small" data-media-refresh>Refresh list</button>
+          <span class="media-fetch-status" data-media-status role="status" />
+        </div>
+        <ul class="media-list" data-media-list />
+      </details>
+
+      <div class="actions">
+        <button type="button" class="btn primary" data-action="save">Save</button>
+        <button type="button" class="btn" data-action="draft">Save draft</button>
+        <button type="button" class="btn" data-action="publish">Publish</button>
+        <button type="button" class="btn" data-action="unpublish">Unpublish</button>
+        <button type="button" class="btn" data-action="archive">Archive</button>
+      </div>
+      <p class="status-line" data-status role="status" />
+    </section>
+
+    <aside class="panel preview-panel" aria-labelledby="preview-heading">
+      <h2 id="preview-heading">Live preview</h2>
+      <div class="preview-body prose" data-preview />
+    </aside>
+  </div>
+
+  {
+    mode === "edit" && revisions.length > 0 && (
+      <section class="panel revisions" aria-labelledby="rev-heading">
+        <h2 id="rev-heading">Revisions</h2>
+        <ul class="revision-list">
+          {revisions.map((r) => (
+            <li>
+              <time datetime={r.created_at}>{r.created_at}</time>
+              {r.revision_note && <span class="rev-note">{r.revision_note}</span>}
+              <button type="button" class="btn small" data-restore-revision={r.id}>
+                Restore
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+  <script is:inline define:vars={{ payload }}>
+  const statusLine = document.querySelector("[data-status]");
+  const previewEl = document.querySelector("[data-preview]");
+  const markdownInput = document.getElementById("field-markdown");
+  const titleInput = document.getElementById("field-title");
+  const slugInput = document.getElementById("field-slug");
+
+  function setStatus(message, isError) {
+    if (!statusLine) {
+      return;
+    }
+    statusLine.textContent = message;
+    statusLine.style.color = isError ? "#8b2942" : "#354139";
+  }
+
+  function readDatetimeLocal(id) {
+    const el = document.getElementById(id);
+    if (!el || !(el instanceof HTMLInputElement) || !el.value) {
+      return null;
+    }
+    const d = new Date(el.value);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  function collectCategories() {
+    const boxes = document.querySelectorAll("[data-category-checkbox]");
+    const primary = document.querySelector("[data-primary-radio]:checked");
+    const primaryId = primary && primary instanceof HTMLInputElement ? primary.value : null;
+    const list = [];
+    for (const box of boxes) {
+      if (!(box instanceof HTMLInputElement) || !box.checked) {
+        continue;
+      }
+      list.push({
+        categoryId: box.value,
+        isPrimary: Boolean(primaryId && primaryId === box.value)
+      });
+    }
+    return list;
+  }
+
+  function collectBody(overrides) {
+    const titleEl = document.getElementById("field-title");
+    const slugEl = document.getElementById("field-slug");
+    const pathEl = document.getElementById("field-full-path");
+    const excerptEl = document.getElementById("field-excerpt");
+    const statusEl = document.getElementById("field-status");
+    const seoTitle = document.getElementById("field-seo-title");
+    const seoDesc = document.getElementById("field-seo-desc");
+    const canonical = document.getElementById("field-canonical");
+    const robots = document.getElementById("field-robots");
+    const author = document.getElementById("field-author");
+    const md = document.getElementById("field-markdown");
+
+    const body = {
+      title: titleEl instanceof HTMLInputElement ? titleEl.value : "",
+      slug: slugEl instanceof HTMLInputElement ? slugEl.value : "",
+      fullPath: pathEl instanceof HTMLInputElement ? pathEl.value : "",
+      markdownBody: md instanceof HTMLTextAreaElement ? md.value : "",
+      excerpt: excerptEl instanceof HTMLTextAreaElement ? excerptEl.value || null : null,
+      status: statusEl instanceof HTMLSelectElement ? statusEl.value : "draft",
+      publishedAt: readDatetimeLocal("field-published"),
+      scheduledAt: readDatetimeLocal("field-scheduled"),
+      seoTitle: seoTitle instanceof HTMLInputElement ? seoTitle.value || null : null,
+      seoDescription: seoDesc instanceof HTMLTextAreaElement ? seoDesc.value || null : null,
+      canonicalUrl: canonical instanceof HTMLInputElement ? canonical.value || null : null,
+      robotsDirective: robots instanceof HTMLInputElement ? robots.value || null : null,
+      authorName: author instanceof HTMLInputElement ? author.value || null : null,
+      categories: collectCategories()
+    };
+
+    return { ...body, ...overrides };
+  }
+
+  let previewTimer = null;
+  async function runPreview() {
+    if (!(markdownInput instanceof HTMLTextAreaElement) || !previewEl) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/markdown-preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ markdown: markdownInput.value })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Preview failed");
+      }
+      previewEl.innerHTML = data.html;
+    } catch (e) {
+      if (previewEl) {
+        previewEl.textContent = e instanceof Error ? e.message : "Preview failed.";
+      }
+    }
+  }
+
+  function schedulePreview() {
+    if (previewTimer) {
+      clearTimeout(previewTimer);
+    }
+    previewTimer = setTimeout(runPreview, 450);
+  }
+
+  if (markdownInput instanceof HTMLTextAreaElement) {
+    markdownInput.addEventListener("input", schedulePreview);
+  }
+
+  const mediaListEl = document.querySelector("[data-media-list]");
+  const mediaStatusEl = document.querySelector("[data-media-status]");
+  const mediaPanel = document.querySelector(".media-panel");
+
+  function insertAtCursor(textarea, snippet) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = textarea.value.slice(0, start);
+    const after = textarea.value.slice(end);
+    const prefix = start > 0 && !/\n$/.test(before) ? "\n" : "";
+    const suffix = "\n";
+    const insert = prefix + snippet + suffix;
+    textarea.value = before + insert + after;
+    const pos = start + insert.length;
+    textarea.selectionStart = textarea.selectionEnd = pos;
+    textarea.focus();
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  async function loadMediaList() {
+    if (!mediaListEl || !mediaStatusEl) {
+      return;
+    }
+    mediaStatusEl.textContent = "Loading…";
+    mediaStatusEl.style.color = "#354139";
+    try {
+      const res = await fetch("/api/admin/media?limit=50", { credentials: "same-origin" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Could not load media.");
+      }
+      const items = Array.isArray(data.items) ? data.items : [];
+      mediaListEl.innerHTML = "";
+      if (items.length === 0) {
+        mediaStatusEl.textContent = "No uploads yet. Use Media in the sidebar.";
+        mediaListEl.innerHTML = "";
+        return;
+      }
+      for (const row of items) {
+        if (!row || typeof row !== "object") {
+          continue;
+        }
+        const id = row.id;
+        const path = row.public_path;
+        const name = row.file_name || "file";
+        if (typeof id !== "string" || typeof path !== "string") {
+          continue;
+        }
+        const li = document.createElement("li");
+        li.className = "media-row";
+        const alt = typeof row.alt_text === "string" && row.alt_text.trim() ? row.alt_text.trim() : "image";
+        const snippet = "![" + alt + "](" + path + ")";
+        li.innerHTML =
+          '<span class="media-name"></span> ' +
+          '<button type="button" class="btn small" data-insert-md>Insert</button>';
+        const nameSpan = li.querySelector(".media-name");
+        if (nameSpan) {
+          nameSpan.textContent = name;
+        }
+        const ins = li.querySelector("[data-insert-md]");
+        ins?.addEventListener("click", () => {
+          if (markdownInput instanceof HTMLTextAreaElement) {
+            insertAtCursor(markdownInput, snippet);
+            setStatus("Image Markdown inserted.", false);
+          }
+        });
+        mediaListEl.appendChild(li);
+      }
+      mediaStatusEl.textContent = items.length + " file(s).";
+      mediaStatusEl.style.color = "#2f6f4e";
+    } catch (e) {
+      mediaStatusEl.textContent = e instanceof Error ? e.message : "Load failed.";
+      mediaStatusEl.style.color = "#8b2942";
+    }
+  }
+
+  mediaPanel?.addEventListener("toggle", () => {
+    if (mediaPanel instanceof HTMLDetailsElement && mediaPanel.open && mediaListEl && !mediaListEl.childElementCount) {
+      void loadMediaList();
+    }
+  });
+
+  document.querySelector("[data-media-refresh]")?.addEventListener("click", () => {
+    if (mediaListEl) {
+      mediaListEl.innerHTML = "";
+    }
+    void loadMediaList();
+  });
+
+  if (titleInput instanceof HTMLInputElement && slugInput instanceof HTMLInputElement) {
+    titleInput.addEventListener("blur", () => {
+      if (!slugInput.value.trim()) {
+        const t = titleInput.value
+          .trim()
+          .toLowerCase()
+          .replace(/'/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .replace(/-{2,}/g, "-");
+        slugInput.value = t || "post";
+      }
+    });
+  }
+
+  document.querySelectorAll("[data-category-checkbox]").forEach((box) => {
+    box.addEventListener("change", () => {
+      if (!(box instanceof HTMLInputElement)) {
+        return;
+      }
+      const li = box.closest("li");
+      const radio = li && li.querySelector("[data-primary-radio]");
+      if (box.checked && radio instanceof HTMLInputElement) {
+        radio.disabled = false;
+      }
+      if (!box.checked && radio instanceof HTMLInputElement) {
+        radio.checked = false;
+        radio.disabled = true;
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-primary-radio]").forEach((r) => {
+    if (r instanceof HTMLInputElement) {
+      const li = r.closest("li");
+      const cb = li && li.querySelector("[data-category-checkbox]");
+      r.disabled = !(cb instanceof HTMLInputElement && cb.checked);
+    }
+  });
+
+  async function savePost(overrides) {
+    const body = collectBody(overrides);
+    const isNew = payload.mode === "new" || !payload.postId;
+    const url = isNew ? "/api/admin/posts" : `/api/admin/posts/${payload.postId}`;
+    const method = isNew ? "POST" : "PATCH";
+
+    setStatus("Saving…", false);
+    const res = await fetch(url, {
+      method,
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setStatus(data.error || "Save failed", true);
+      return null;
+    }
+    setStatus("Saved.", false);
+    if (isNew && data.id) {
+      window.location.href = `/admin/posts/${data.id}/edit`;
+      return null;
+    }
+    return data;
+  }
+
+  document.querySelectorAll("[data-action]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const action = btn.getAttribute("data-action");
+      if (action === "save") {
+        await savePost({});
+      } else if (action === "draft") {
+        const publishedEl = document.getElementById("field-published");
+        if (publishedEl instanceof HTMLInputElement) {
+          publishedEl.value = "";
+        }
+        await savePost({ status: "draft", publishedAt: null, scheduledAt: null });
+      } else if (action === "publish") {
+        await savePost({ status: "published" });
+      } else if (action === "unpublish") {
+        const publishedEl = document.getElementById("field-published");
+        if (publishedEl instanceof HTMLInputElement) {
+          publishedEl.value = "";
+        }
+        await savePost({ status: "draft", publishedAt: null });
+      } else if (action === "archive") {
+        await savePost({ status: "archived" });
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-restore-revision]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const rid = btn.getAttribute("data-restore-revision");
+      if (!rid || !payload.postId) {
+        return;
+      }
+      if (!window.confirm("Replace the current editor content with this revision?")) {
+        return;
+      }
+      setStatus("Restoring…", false);
+      const res = await fetch(`/api/admin/posts/${payload.postId}/revisions/${rid}`, {
+        method: "POST",
+        credentials: "same-origin"
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setStatus(data.error || "Restore failed", true);
+        return;
+      }
+      window.location.reload();
+    });
+  });
+
+  runPreview();
+  </script>
+
+  <style>
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .back,
+  .preview {
+    color: #2f6f4e;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .back:hover,
+  .preview:hover {
+    text-decoration: underline;
+  }
+
+  .editor-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+  }
+
+  @media (max-width: 960px) {
+    .editor-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid #d8d2c7;
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .main-panel {
+    min-width: 0;
+  }
+
+  .preview-panel h2 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+  }
+
+  .preview-body {
+    min-height: 200px;
+    max-height: 70vh;
+    overflow: auto;
+    padding: 12px;
+    background: #f7f4ee;
+    border-radius: 8px;
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.55;
+  }
+
+  .field-row.two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  @media (max-width: 640px) {
+    .field-row.two {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  input[type="text"],
+  input[type="url"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border: 1px solid #c9c2b6;
+    border-radius: 6px;
+    font: inherit;
+    background: #fff;
+  }
+
+  textarea.markdown-input {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .categories-fieldset {
+    border: 1px solid #d8d2c7;
+    border-radius: 8px;
+    padding: 12px 14px 14px;
+    margin: 0 0 16px;
+  }
+
+  .categories-fieldset legend {
+    font-weight: 700;
+    padding: 0 6px;
+  }
+
+  .fieldset-hint {
+    margin: 0 0 10px;
+    font-size: 0.84rem;
+    color: #6d746e;
+  }
+
+  .category-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+  }
+
+  .category-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    justify-content: space-between;
+    border-bottom: 1px solid #ece8df;
+    padding-bottom: 8px;
+  }
+
+  .category-list li:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .category-list label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .muted {
+    color: #6d746e;
+    font-size: 0.82rem;
+  }
+
+  .primary-label {
+    font-size: 0.86rem;
+    color: #354139;
+  }
+
+  .seo-panel {
+    margin-bottom: 16px;
+    border: 1px dashed #c9c2b6;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .seo-panel summary {
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .media-panel {
+    margin-bottom: 16px;
+    border: 1px dashed #c9c2b6;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .media-panel summary {
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .media-hint {
+    margin: 8px 0 10px;
+    font-size: 0.84rem;
+    color: #6d746e;
+  }
+
+  .media-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
+  .media-fetch-status {
+    font-size: 0.82rem;
+    min-height: 1.1em;
+  }
+
+  .media-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+    max-height: 220px;
+    overflow: auto;
+  }
+
+  .media-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.86rem;
+    padding: 6px 8px;
+    background: #f7f4ee;
+    border-radius: 6px;
+  }
+
+  .media-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .btn {
+    border: 1px solid #b8b0a3;
+    background: #f0ebe3;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #1f2523;
+  }
+
+  .btn:hover {
+    background: #e4dfd4;
+  }
+
+  .btn.primary {
+    background: #2f6f4e;
+    border-color: #2a5d42;
+    color: #fff;
+  }
+
+  .btn.primary:hover {
+    background: #285f43;
+  }
+
+  .btn.small {
+    padding: 4px 10px;
+    font-size: 0.82rem;
+  }
+
+  .status-line {
+    margin-top: 12px;
+    min-height: 1.2em;
+    font-size: 0.9rem;
+  }
+
+  .revisions {
+    margin-top: 22px;
+  }
+
+  .revision-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+  }
+
+  .revision-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.88rem;
+  }
+
+  .rev-note {
+    color: #6d746e;
+    flex: 1;
+    min-width: 120px;
+  }
+  </style>
+</AdminLayout>

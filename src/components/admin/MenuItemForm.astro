@@ -1,0 +1,307 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import FormField from "./FormField.astro";
+
+interface Option {
+  id: string;
+  label: string;
+}
+
+interface PostOption {
+  id: string;
+  title: string;
+}
+
+interface CategoryOption {
+  id: string;
+  name: string;
+  full_path: string;
+}
+
+interface Props {
+  menuKey: string;
+  menuName: string;
+  mode: "new" | "edit";
+  itemId: string | null;
+  parentOptions: Option[];
+  postOptions: PostOption[];
+  categoryOptions: CategoryOption[];
+  initial: {
+    label: string;
+    item_type: string;
+    target: string;
+    parent_id: string | null;
+    sort_order: number;
+    open_in_new_tab: number;
+  };
+}
+
+const {
+  menuKey,
+  menuName,
+  mode,
+  itemId,
+  parentOptions,
+  postOptions,
+  categoryOptions,
+  initial
+} = Astro.props;
+
+const title = mode === "new" ? `New item · ${menuName}` : `Edit item · ${menuName}`;
+const payload = { menuKey, itemId, mode };
+---
+
+<AdminLayout title={title}>
+  <div class="toolbar">
+    <a class="back" href={`/admin/menus/${menuKey}`}>Back to {menuName}</a>
+  </div>
+
+  <section class="panel">
+    <FormField label="Label" for="mi-label">
+      <input id="mi-label" type="text" value={initial.label} required />
+    </FormField>
+
+    <FormField label="Link type" for="mi-type">
+      <select id="mi-type">
+        <option value="url" selected={initial.item_type === "url"}>Custom URL or path</option>
+        <option value="post" selected={initial.item_type === "post"}>Post</option>
+        <option value="category" selected={initial.item_type === "category"}>Category</option>
+      </select>
+    </FormField>
+
+    <div id="wrap-url" class:list={["target-wrap", initial.item_type !== "url" && "is-hidden"]}>
+      <FormField
+        label="Path or full URL"
+        for="mi-target-url"
+        hint="Examples: /about or https://example.org (external links should open in a new tab)."
+      >
+        <input id="mi-target-url" type="text" value={initial.item_type === "url" ? initial.target : ""} />
+      </FormField>
+    </div>
+
+    <div id="wrap-post" class:list={["target-wrap", initial.item_type !== "post" && "is-hidden"]}>
+      <FormField label="Post" for="mi-target-post">
+        <select id="mi-target-post">
+          <option value="">Select a post</option>
+          {
+            postOptions.map((p) => (
+              <option value={p.id} selected={initial.item_type === "post" && initial.target === p.id}>
+                {p.title}
+              </option>
+            ))
+          }
+        </select>
+      </FormField>
+    </div>
+
+    <div id="wrap-cat" class:list={["target-wrap", initial.item_type !== "category" && "is-hidden"]}>
+      <FormField label="Category" for="mi-target-cat">
+        <select id="mi-target-cat">
+          <option value="">Select a category</option>
+          {
+            categoryOptions.map((c) => (
+              <option
+                value={c.id}
+                selected={initial.item_type === "category" && initial.target === c.id}
+              >
+                {c.name} ({c.full_path})
+              </option>
+            ))
+          }
+        </select>
+      </FormField>
+    </div>
+
+    <FormField label="Parent item" for="mi-parent">
+      <select id="mi-parent">
+        <option value="" selected={initial.parent_id == null}>None (top level)</option>
+        {
+          parentOptions.map((p) => (
+            <option value={p.id} selected={initial.parent_id === p.id}>
+              {p.label}
+            </option>
+          ))
+        }
+      </select>
+    </FormField>
+
+    <FormField label="Sort order" for="mi-sort">
+      <input id="mi-sort" type="number" value={String(initial.sort_order)} step="1" />
+    </FormField>
+
+    <FormField label="Open in new tab" for="mi-tab">
+      <label class="check">
+        <input id="mi-tab" type="checkbox" checked={initial.open_in_new_tab === 1} />
+        <span>Use a new browser tab (recommended for external URLs)</span>
+      </label>
+    </FormField>
+
+    <div class="actions">
+      <button type="button" class="btn primary" data-save>Save</button>
+    </div>
+    <p class="status" data-status role="status" />
+  </section>
+</AdminLayout>
+
+<script is:inline define:vars={{ payload }}>
+  const typeEl = document.getElementById("mi-type");
+  const wrapUrl = document.getElementById("wrap-url");
+  const wrapPost = document.getElementById("wrap-post");
+  const wrapCat = document.getElementById("wrap-cat");
+  const statusEl = document.querySelector("[data-status]");
+
+  function setStatus(message, isError) {
+    if (!statusEl) {
+      return;
+    }
+    statusEl.textContent = message;
+    statusEl.style.color = isError ? "#8b2942" : "#354139";
+  }
+
+  function syncTypeVisibility() {
+    const t = typeEl instanceof HTMLSelectElement ? typeEl.value : "url";
+    if (wrapUrl) {
+      wrapUrl.classList.toggle("is-hidden", t !== "url");
+    }
+    if (wrapPost) {
+      wrapPost.classList.toggle("is-hidden", t !== "post");
+    }
+    if (wrapCat) {
+      wrapCat.classList.toggle("is-hidden", t !== "category");
+    }
+  }
+
+  typeEl?.addEventListener("change", syncTypeVisibility);
+  syncTypeVisibility();
+
+  function collectTarget(itemType) {
+    if (itemType === "url") {
+      const el = document.getElementById("mi-target-url");
+      return el instanceof HTMLInputElement ? el.value.trim() : "";
+    }
+    if (itemType === "post") {
+      const el = document.getElementById("mi-target-post");
+      return el instanceof HTMLSelectElement ? el.value.trim() : "";
+    }
+    const el = document.getElementById("mi-target-cat");
+    return el instanceof HTMLSelectElement ? el.value.trim() : "";
+  }
+
+  document.querySelector("[data-save]")?.addEventListener("click", async () => {
+    const labelEl = document.getElementById("mi-label");
+    const label = labelEl instanceof HTMLInputElement ? labelEl.value.trim() : "";
+    const itemType = typeEl instanceof HTMLSelectElement ? typeEl.value : "url";
+    const target = collectTarget(itemType);
+    const parentEl = document.getElementById("mi-parent");
+    const parentId =
+      parentEl instanceof HTMLSelectElement && parentEl.value ? parentEl.value : null;
+    const sortEl = document.getElementById("mi-sort");
+    const sortOrder = sortEl instanceof HTMLInputElement ? Number(sortEl.value) || 0 : 0;
+    const tabEl = document.getElementById("mi-tab");
+    const openInNewTab = tabEl instanceof HTMLInputElement ? tabEl.checked : false;
+
+    if (!target) {
+      setStatus("Target is required for the selected link type.", true);
+      return;
+    }
+
+    const body = { label, itemType, target, parentId, sortOrder, openInNewTab };
+    const isNew = payload.mode === "new" || !payload.itemId;
+    const url = isNew
+      ? `/api/admin/menus/${payload.menuKey}/items`
+      : `/api/admin/menus/${payload.menuKey}/items/${payload.itemId}`;
+    const method = isNew ? "POST" : "PATCH";
+
+    setStatus("Saving…", false);
+    const res = await fetch(url, {
+      method,
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setStatus(data.error || "Save failed", true);
+      return;
+    }
+    setStatus("Saved.", false);
+    if (isNew && data.id) {
+      window.location.href = `/admin/menus/${payload.menuKey}/items/${data.id}/edit`;
+    } else {
+      window.location.href = `/admin/menus/${payload.menuKey}`;
+    }
+  });
+</script>
+
+<style>
+  .toolbar {
+    margin-bottom: 18px;
+  }
+
+  .back {
+    color: #2f6f4e;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .back:hover {
+    text-decoration: underline;
+  }
+
+  .panel {
+    max-width: 38rem;
+    background: #fff;
+    border: 1px solid #d8d2c7;
+    border-radius: 10px;
+    padding: 22px;
+    display: grid;
+    gap: 14px;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border: 1px solid #c9c2b6;
+    border-radius: 6px;
+    font: inherit;
+  }
+
+  .target-wrap.is-hidden {
+    display: none;
+  }
+
+  .check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 0.9rem;
+    color: #354139;
+  }
+
+  .actions {
+    margin-top: 6px;
+  }
+
+  .btn {
+    border: 1px solid #2a5d42;
+    background: #2f6f4e;
+    color: #fff;
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .btn:hover {
+    background: #285f43;
+  }
+
+  .status {
+    min-height: 1.2em;
+    font-size: 0.9rem;
+    margin: 0;
+  }
+</style>

@@ -1,0 +1,37 @@
+---
+import NavList from "./NavList.astro";
+import type { ResolvedMenuNode } from "../../lib/menus/resolve";
+
+interface Props {
+  footerNav: ResolvedMenuNode[];
+}
+
+const { footerNav } = Astro.props;
+---
+
+{
+  footerNav.length > 0 && (
+    <footer class="site-footer">
+      <div class="inner">
+        <nav aria-label="Footer navigation">
+          <NavList nodes={footerNav} />
+        </nav>
+      </div>
+    </footer>
+  )
+}
+
+<style>
+  .site-footer {
+    margin-top: auto;
+    border-top: 1px solid color-mix(in srgb, var(--cf-border) 70%, transparent);
+    background: var(--cf-footer-bg);
+  }
+
+  .inner {
+    box-sizing: border-box;
+    width: min(100%, 1120px);
+    margin: 0 auto;
+    padding: 18px 24px;
+  }
+</style>

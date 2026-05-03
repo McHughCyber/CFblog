@@ -1,0 +1,66 @@
+---
+import type { CategoryTreeNode } from "../../lib/categories/build-tree";
+
+interface Props {
+  nodes: CategoryTreeNode[];
+  nested?: boolean;
+}
+
+const { nodes, nested = false } = Astro.props;
+---
+
+<ul class:list={["tree", nested && "nested"]}>
+  {
+    nodes.map((n) => (
+      <li>
+        <div class="node">
+          <a href={`/admin/categories/${n.id}/edit`}>{n.name}</a>
+          <span class="path">{n.full_path}</span>
+        </div>
+        {n.children.length > 0 && <Astro.self nodes={n.children} nested />}
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .tree {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .tree.nested {
+    margin-top: 6px;
+    margin-left: 18px;
+    padding-left: 12px;
+    border-left: 1px solid #d8d2c7;
+  }
+
+  .tree > li {
+    margin-bottom: 10px;
+  }
+
+  .node {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 14px;
+  }
+
+  .node a {
+    font-weight: 700;
+    color: #2f6f4e;
+    text-decoration: none;
+  }
+
+  .node a:hover {
+    text-decoration: underline;
+  }
+
+  .path {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.84rem;
+    color: #6d746e;
+  }
+</style>

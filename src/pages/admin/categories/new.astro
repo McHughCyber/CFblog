@@ -1,0 +1,32 @@
+---
+import { env } from "cloudflare:workers";
+import CategoryEditor from "../../../components/admin/CategoryEditor.astro";
+import { listCategories } from "../../../lib/db/categories";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const all = await listCategories(runtimeEnv.CFBLOG_DB);
+const parentOptions = all.map((c) => ({
+  id: c.id,
+  name: c.name,
+  full_path: c.full_path
+}));
+---
+
+<CategoryEditor
+  mode="new"
+  categoryId={null}
+  parentOptions={parentOptions}
+  initial={{
+    name: "",
+    slug: "",
+    parent_id: null,
+    description: null,
+    seo_title: null,
+    seo_description: null,
+    sort_order: 0
+  }}
+/>

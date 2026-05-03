@@ -1,0 +1,19 @@
+---
+import { customCssSafeForInlineStyle } from "../../lib/theme/custom-css-guard";
+import { themeToGlobalCss } from "../../lib/theme/cssVariables";
+import type { ThemeSettings } from "../../lib/theme/schema";
+
+interface Props {
+  theme: ThemeSettings;
+}
+
+const { theme } = Astro.props;
+const globalCss = themeToGlobalCss(theme);
+const extraCss = customCssSafeForInlineStyle(theme.customCss);
+---
+
+{
+  theme.faviconPublicPath && <link rel="icon" href={theme.faviconPublicPath} />
+}
+<style is:global set:html={globalCss} />
+{extraCss ? <style is:global set:html={extraCss} /> : null}

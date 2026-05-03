@@ -1,0 +1,164 @@
+---
+import { env } from "cloudflare:workers";
+import AdminLayout from "../../../../layouts/AdminLayout.astro";
+import { getPrimaryCategoryForPost, getPostById } from "../../../../lib/db/posts";
+import { getCategoryAncestors } from "../../../../lib/db/categories";
+import { renderMarkdown } from "../../../../lib/markdown/render";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const id = Astro.params.id;
+
+if (!id) {
+  return Astro.redirect("/admin/posts", 302);
+}
+
+const post = await getPostById(runtimeEnv.CFBLOG_DB, id);
+if (!post) {
+  return Astro.redirect("/admin/posts", 302);
+}
+
+const html = await renderMarkdown(post.markdown_body);
+const primaryCategory = await getPrimaryCategoryForPost(runtimeEnv.CFBLOG_DB, post.id);
+const categoryCrumbs = primaryCategory
+  ? (await getCategoryAncestors(runtimeEnv.CFBLOG_DB, primaryCategory.id)).map((c) => ({
+      label: c.name,
+      href: c.full_path
+    }))
+  : [];
+
+const breadcrumbs = [
+  { label: "Home", href: "/" },
+  ...categoryCrumbs,
+  { label: post.title, href: post.full_path }
+];
+
+const now = Date.now();
+const publiclyVisible =
+  post.status === "published" &&
+  (post.published_at == null || new Date(post.published_at).getTime() <= now);
+const isNonPublic = !publiclyVisible;
+---
+
+<AdminLayout title={`Preview: ${post.title}`}>
+  <div class="toolbar">
+    <a href={`/admin/posts/${id}/edit`}>Back to editor</a>
+    <a href={post.full_path} target="_blank" rel="noopener noreferrer">
+      Open public URL
+    </a>
+  </div>
+
+  {
+    isNonPublic && (
+      <p class="banner">
+        This post is not shown on the public site as published content ({post.status}
+        {post.scheduled_at ? `, scheduled ${post.scheduled_at}` : ""}).
+      </p>
+    )
+  }
+
+  <article class="preview-article">
+    <nav class="breadcrumbs" aria-label="Breadcrumbs">
+      {
+        breadcrumbs.map((crumb, index) => (
+          <>
+            {index > 0 && <span aria-hidden="true"> / </span>}
+            {index === breadcrumbs.length - 1 ? (
+              <span aria-current="page">{crumb.label}</span>
+            ) : (
+              <a href={crumb.href}>{crumb.label}</a>
+            )}
+          </>
+        ))
+      }
+    </nav>
+    <header>
+      <p class="eyebrow">Preview</p>
+      <h1>{post.title}</h1>
+      {post.published_at && <time datetime={post.published_at}>{post.published_at}</time>}
+    </header>
+    <div class="content" set:html={html} />
+  </article>
+</AdminLayout>
+
+<style>
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .toolbar a {
+    color: #2f6f4e;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .toolbar a:hover {
+    text-decoration: underline;
+  }
+
+  .banner {
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    background: #f5e6c8;
+    border: 1px solid #e2c48a;
+    border-radius: 8px;
+    color: #4a3b12;
+    font-size: 0.92rem;
+  }
+
+  .preview-article {
+    max-width: 44rem;
+    background: #fff;
+    border: 1px solid #d8d2c7;
+    border-radius: 10px;
+    padding: 24px 28px;
+  }
+
+  .breadcrumbs {
+    font-size: 0.88rem;
+    margin-bottom: 16px;
+    color: #6d746e;
+  }
+
+  .breadcrumbs a {
+    color: #2f6f4e;
+    text-decoration: none;
+  }
+
+  .breadcrumbs a:hover {
+    text-decoration: underline;
+  }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #6d746e;
+    margin: 0 0 6px;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 1.85rem;
+    line-height: 1.2;
+  }
+
+  time {
+    color: #6d746e;
+    font-size: 0.9rem;
+  }
+
+  .content {
+    margin-top: 20px;
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.6;
+  }
+</style>

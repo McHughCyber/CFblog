@@ -1,0 +1,396 @@
+---
+import { env } from "cloudflare:workers";
+import SiteFooter from "../components/site/SiteFooter.astro";
+import SiteHeader from "../components/site/SiteHeader.astro";
+import ThemeHead from "../components/site/ThemeHead.astro";
+import { loadPublicNavigation } from "../lib/menus/public-navigation";
+import { countPublishedPosts, listPublishedPosts } from "../lib/db/posts";
+import { getSetting } from "../lib/db/settings";
+import { loadTheme } from "../lib/theme/load";
+import { createPagination, pageHref, parsePage } from "../lib/pagination";
+import { absoluteUrl } from "../lib/seo";
+import type { PostRecord } from "../lib/db/types";
+
+interface SiteSettings {
+  title: string;
+  description: string;
+  language: string;
+  postsPerPage: number;
+}
+
+interface VersionSetting {
+  value: string;
+}
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+  SITE_URL: string;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const templateVersion =
+  (await getSetting<VersionSetting>(runtimeEnv.CFBLOG_DB, "template.version"))
+    ?.value ?? "0.1.0";
+const site =
+  (await getSetting<SiteSettings>(runtimeEnv.CFBLOG_DB, "site")) ?? {
+    title: "CFblog",
+    description: "A Cloudflare-native Astro blog.",
+    language: "en",
+    postsPerPage: 10
+  };
+const totalPosts = await countPublishedPosts(runtimeEnv.CFBLOG_DB);
+const pagination = createPagination(
+  totalPosts,
+  parsePage(Astro.url.searchParams.get("page")),
+  site.postsPerPage
+);
+const posts: PostRecord[] = await listPublishedPosts(runtimeEnv.CFBLOG_DB, {
+  limit: pagination.perPage,
+  offset: pagination.offset
+});
+const nav = await loadPublicNavigation(runtimeEnv.CFBLOG_DB);
+const theme = await loadTheme(runtimeEnv.CFBLOG_DB);
+const canonicalUrl = absoluteUrl({ siteUrl: runtimeEnv.SITE_URL, path: "/" });
+const pageTitle =
+  pagination.currentPage > 1
+    ? `${site.title} - Page ${pagination.currentPage}`
+    : site.title;
+---
+
+<html lang={site.language}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <ThemeHead theme={theme} />
+    <meta name="description" content={site.description} />
+    <link rel="canonical" href={canonicalUrl} />
+    {
+      pagination.hasPreviousPage && (
+        <link rel="prev" href={absoluteUrl({
+          siteUrl: runtimeEnv.SITE_URL,
+          path: pageHref("/", pagination.currentPage - 1)
+        })} />
+      )
+    }
+    {
+      pagination.hasNextPage && (
+        <link rel="next" href={absoluteUrl({
+          siteUrl: runtimeEnv.SITE_URL,
+          path: pageHref("/", pagination.currentPage + 1)
+        })} />
+      )
+    }
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={site.description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={site.description} />
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Blog",
+        name: site.title,
+        description: site.description,
+        url: canonicalUrl
+      })}
+    />
+    <title>{pageTitle}</title>
+  </head>
+  <body data-home-layout={theme.homepageLayout} data-post-listing={theme.postListingStyle}>
+    <SiteHeader siteTitle={site.title} primaryNav={nav.primary} logoPublicPath={theme.logoPublicPath} />
+    <main class="shell">
+      <section class="intro">
+        <p class="eyebrow">Cloudflare-native publishing</p>
+        <h1>{site.title}</h1>
+        <p>{site.description}</p>
+      </section>
+
+      <section class="posts" aria-labelledby="latest-heading">
+        <div class="section-heading">
+          <h2 id="latest-heading">Latest Posts</h2>
+          <span>{totalPosts} published</span>
+        </div>
+
+        {
+          posts.length > 0 ? (
+            <ol>
+              {posts.map((post) => (
+                <li>
+                  <a href={post.full_path}>
+                    <span>{post.title}</span>
+                    <time datetime={post.published_at ?? post.created_at}>
+                      {new Intl.DateTimeFormat(site.language, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric"
+                      }).format(
+                        new Date(post.published_at ?? post.created_at)
+                      )}
+                    </time>
+                  </a>
+                  {post.excerpt && <p>{post.excerpt}</p>}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p class="empty">No published posts yet.</p>
+          )
+        }
+
+        {
+          pagination.totalPages > 1 && (
+            <nav class="pagination" aria-label="Post pages">
+              {pagination.hasPreviousPage ? (
+                <a href={pageHref("/", pagination.currentPage - 1)}>Newer</a>
+              ) : (
+                <span>Newer</span>
+              )}
+              <p>
+                Page {pagination.currentPage} of {pagination.totalPages}
+              </p>
+              {pagination.hasNextPage ? (
+                <a href={pageHref("/", pagination.currentPage + 1)}>Older</a>
+              ) : (
+                <span>Older</span>
+              )}
+            </nav>
+          )
+        }
+      </section>
+
+      <section class="status" aria-label="Template status">
+        <p>v{templateVersion}</p>
+        <p>Workers SSR</p>
+        <p>D1 content</p>
+        <p>R2 media ready</p>
+      </section>
+    </main>
+    <SiteFooter footerNav={nav.footer} />
+  </body>
+</html>
+
+<style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .shell {
+    box-sizing: border-box;
+    min-height: 100vh;
+    width: min(100%, 1120px);
+    margin: 0 auto;
+    padding: 56px 24px;
+    display: grid;
+    gap: 44px;
+  }
+
+  .intro {
+    max-width: 840px;
+    padding-top: 8vh;
+  }
+
+  .eyebrow {
+    margin: 0 0 12px;
+    color: var(--cf-muted);
+    font-family: var(--cf-font-ui);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  h1,
+  h2,
+  p {
+    margin-top: 0;
+  }
+
+  h1 {
+    margin-bottom: 16px;
+    font-size: clamp(3.25rem, 9vw, 8rem);
+    line-height: 0.95;
+  }
+
+  .intro p:last-child {
+    margin-bottom: 0;
+    max-width: 700px;
+    color: color-mix(in srgb, var(--cf-text) 72%, var(--cf-muted));
+    font-size: 1.28rem;
+    line-height: 1.7;
+  }
+
+  .posts {
+    display: grid;
+    gap: 18px;
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--cf-border);
+    padding-bottom: 12px;
+  }
+
+  .section-heading span,
+  time,
+  .status,
+  .pagination,
+  .empty {
+    font-family: var(--cf-font-ui);
+  }
+
+  .section-heading span {
+    color: var(--cf-muted);
+    font-size: 0.88rem;
+  }
+
+  ol {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    border-bottom: 1px solid color-mix(in srgb, var(--cf-border) 85%, transparent);
+    padding: 20px 0 22px;
+  }
+
+  a {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 20px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  a span {
+    font-size: clamp(1.5rem, 3vw, 2.4rem);
+    line-height: 1.08;
+  }
+
+  a:hover span {
+    text-decoration: underline;
+    text-decoration-thickness: 0.08em;
+    text-underline-offset: 0.12em;
+  }
+
+  time {
+    flex: 0 0 auto;
+    color: var(--cf-muted);
+    font-size: 0.9rem;
+  }
+
+  li p {
+    max-width: 56ch;
+    margin: 10px 0 0;
+    color: color-mix(in srgb, var(--cf-text) 55%, var(--cf-muted));
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .empty {
+    margin: 0;
+    color: var(--cf-muted);
+  }
+
+  .status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-bottom: 20px;
+    color: color-mix(in srgb, var(--cf-text) 65%, var(--cf-muted));
+    font-size: 0.84rem;
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-top: 10px;
+    color: color-mix(in srgb, var(--cf-text) 58%, var(--cf-muted));
+    font-size: 0.92rem;
+  }
+
+  .pagination a,
+  .pagination span {
+    border: 1px solid var(--cf-border);
+    padding: 8px 11px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .pagination span {
+    opacity: 0.45;
+  }
+
+  .pagination p {
+    margin: 0;
+  }
+
+  h2 {
+    margin-bottom: 0;
+    font-size: 1rem;
+  }
+
+  .status p {
+    margin: 0;
+    border: 1px solid var(--cf-border);
+    padding: 7px 10px;
+  }
+
+  @media (max-width: 680px) {
+    .shell {
+      padding-block: 40px;
+    }
+
+    a,
+    .section-heading,
+    .pagination {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    time {
+      flex-basis: auto;
+    }
+  }
+
+  body[data-home-layout="magazine"] .shell {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    align-items: start;
+  }
+
+  body[data-home-layout="magazine"] .intro {
+    padding-top: 2rem;
+  }
+
+  @media (max-width: 900px) {
+    body[data-home-layout="magazine"] .shell {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  body[data-post-listing="cards"] .posts ol {
+    gap: 14px;
+  }
+
+  body[data-post-listing="cards"] .posts li {
+    border: 1px solid var(--cf-border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    background: var(--cf-surface);
+    border-bottom: none;
+  }
+</style>

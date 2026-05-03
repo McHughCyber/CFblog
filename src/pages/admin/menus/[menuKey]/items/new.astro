@@ -1,0 +1,51 @@
+---
+import { env } from "cloudflare:workers";
+import MenuItemForm from "../../../../../components/admin/MenuItemForm.astro";
+import { listCategories } from "../../../../../lib/db/categories";
+import { getMenuByKey } from "../../../../../lib/db/menus";
+import { listAdminPosts } from "../../../../../lib/db/posts";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const menuKey = Astro.params.menuKey;
+
+if (!menuKey) {
+  return Astro.redirect("/admin/menus", 302);
+}
+
+const menu = await getMenuByKey(runtimeEnv.CFBLOG_DB, menuKey);
+if (!menu) {
+  return Astro.redirect("/admin/menus", 302);
+}
+
+const parentOptions = menu.items.map((i) => ({ id: i.id, label: i.label }));
+const posts = await listAdminPosts(runtimeEnv.CFBLOG_DB, { limit: 150, offset: 0 });
+const postOptions = posts.map((p) => ({ id: p.id, title: p.title }));
+const categories = await listCategories(runtimeEnv.CFBLOG_DB);
+const categoryOptions = categories.map((c) => ({
+  id: c.id,
+  name: c.name,
+  full_path: c.full_path
+}));
+---
+
+<MenuItemForm
+  menuKey={menuKey}
+  menuName={menu.name}
+  mode="new"
+  itemId={null}
+  parentOptions={parentOptions}
+  postOptions={postOptions}
+  categoryOptions={categoryOptions}
+  initial={{
+    label: "",
+    item_type: "url",
+    target: "",
+    parent_id: null,
+    sort_order: 0,
+    open_in_new_tab: 0
+  }}
+/>

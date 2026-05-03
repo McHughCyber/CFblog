@@ -1,0 +1,87 @@
+---
+import NavList from "./NavList.astro";
+import type { ResolvedMenuNode } from "../../lib/menus/resolve";
+
+interface Props {
+  siteTitle: string;
+  primaryNav: ResolvedMenuNode[];
+  logoPublicPath?: string | null;
+}
+
+const { siteTitle, primaryNav, logoPublicPath = null } = Astro.props;
+---
+
+<header class="site-header">
+  <div class="inner">
+    <a class="title" href="/">
+      {
+        logoPublicPath && (
+          <img class="logo" src={logoPublicPath} alt="" width="120" height="32" loading="eager" />
+        )
+      }
+      <span class="title-text">{siteTitle}</span>
+    </a>
+    {
+      primaryNav.length > 0 && (
+        <nav class="primary" aria-label="Primary navigation">
+          <NavList nodes={primaryNav} />
+        </nav>
+      )
+    }
+  </div>
+</header>
+
+<style>
+  .site-header {
+    border-bottom: 1px solid color-mix(in srgb, var(--cf-border) 70%, transparent);
+    background: var(--cf-header-bg);
+  }
+
+  .inner {
+    box-sizing: border-box;
+    width: min(100%, 1120px);
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--cf-font-ui);
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: var(--cf-text);
+    text-decoration: none;
+  }
+
+  .logo {
+    display: block;
+    height: 28px;
+    width: auto;
+    max-width: 140px;
+    object-fit: contain;
+  }
+
+  .title-text {
+    min-width: 0;
+  }
+
+  .title:hover {
+    color: var(--cf-accent);
+  }
+
+  .title:hover .title-text {
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
+  }
+
+  .primary {
+    min-width: 0;
+  }
+</style>

@@ -1,6 +1,67 @@
 # CFblog
 
-Astro blog template concept for deployment to Cloudflare Workers.
+Reusable Astro blog template for deployment to Cloudflare Workers.
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/your-github-user/astro-cloudflare-blog-template)
+
+## MVP Scope
+
+CFblog is being built as `astro-cloudflare-blog-template`: a single-tenant blog starter that runs on Cloudflare Workers, stores editable blog content in D1, stores uploaded media in R2, and uses Cloudflare Access as the admin authentication perimeter.
+
+The MVP content model is intentionally focused:
+
+- Posts authored as Markdown.
+- Nested categories.
+- Configurable menus, redirects, settings, and media metadata as supporting records.
+
+Any validated Cloudflare Access user for the configured Access application is treated as an admin. Server-side Access JWT validation is required before admin routes and APIs are considered complete.
+
+## MVP Non-Goals
+
+- No multi-tenant SaaS control plane.
+- No visual page builder.
+- No arbitrary browser-authored MDX.
+- No in-app source code self-update.
+
+## Supported Cloudflare Products
+
+- Workers: Astro server rendering and deployment target.
+- D1: canonical store for content, settings, revisions, redirects, menus, and media metadata.
+- R2: uploaded images and attachments.
+- Access: admin route and API protection.
+- KV: optional low-risk cache acceleration only.
+- AI Crawl Control and Pay Per Crawl: documented as Cloudflare-level configuration, not app-owned billing logic.
+
+## Release Target
+
+The MVP target is a working `*.workers.dev` deployment with custom-domain compatibility. A clean deployment should include seed content, declared D1/R2 bindings, protected admin routes, and local-to-remote migration instructions.
+
+## Local Development
+
+Install dependencies with pnpm:
+
+```sh
+corepack enable
+corepack prepare pnpm@10.10.0 --activate
+pnpm install
+```
+
+Useful scripts:
+
+```sh
+pnpm dev
+pnpm build
+pnpm preview
+pnpm deploy
+pnpm db:migrations:apply
+pnpm test
+```
+
+Before running Wrangler preview or deploy, replace placeholder binding IDs in `wrangler.jsonc` with real Cloudflare resource IDs.
+
+## Admin Protection
+
+Admin routes and admin API routes are protected by Cloudflare Access JWT validation. See [Cloudflare Access setup](docs/access-setup.md) for the required Access application and environment configuration.
 
 ## Development Environment Variables
 

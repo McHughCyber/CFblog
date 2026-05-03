@@ -1,0 +1,47 @@
+---
+import { env } from "cloudflare:workers";
+import PostEditor from "../../../../components/admin/PostEditor.astro";
+import { listCategories } from "../../../../lib/db/categories";
+import {
+  getPostById,
+  listPostCategoryAssignments,
+  listPostRevisions
+} from "../../../../lib/db/posts";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const id = Astro.params.id;
+
+if (!id) {
+  return Astro.redirect("/admin/posts", 302);
+}
+
+const post = await getPostById(runtimeEnv.CFBLOG_DB, id);
+if (!post) {
+  return Astro.redirect("/admin/posts", 302);
+}
+
+const categories = await listCategories(runtimeEnv.CFBLOG_DB);
+const assignedCategories = await listPostCategoryAssignments(runtimeEnv.CFBLOG_DB, id);
+const revisions = await listPostRevisions(runtimeEnv.CFBLOG_DB, id, 30);
+---
+
+<PostEditor
+  mode="edit"
+  postId={id}
+  categories={categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    full_path: c.full_path
+  }))}
+  post={post}
+  assignedCategories={assignedCategories}
+  revisions={revisions.map((r) => ({
+    id: r.id,
+    created_at: r.created_at,
+    revision_note: r.revision_note
+  }))}
+/>

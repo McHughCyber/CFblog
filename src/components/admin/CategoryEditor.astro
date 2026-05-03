@@ -1,0 +1,232 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import FormField from "./FormField.astro";
+
+interface ParentOption {
+  id: string;
+  name: string;
+  full_path: string;
+}
+
+interface Props {
+  mode: "new" | "edit";
+  categoryId: string | null;
+  parentOptions: ParentOption[];
+  initial: {
+    name: string;
+    slug: string;
+    parent_id: string | null;
+    description: string | null;
+    seo_title: string | null;
+    seo_description: string | null;
+    sort_order: number;
+  };
+}
+
+const { mode, categoryId, parentOptions, initial } = Astro.props;
+
+const title = mode === "new" ? "New category" : `Edit: ${initial.name}`;
+
+const payload = { mode, categoryId };
+---
+
+<AdminLayout title={title}>
+  <div class="toolbar">
+    <a class="back" href="/admin/categories">All categories</a>
+  </div>
+
+  <section class="panel">
+    <FormField label="Name" for="cat-name">
+      <input id="cat-name" type="text" value={initial.name} required />
+    </FormField>
+
+    <FormField label="Slug" for="cat-slug" hint="Lowercase letters, numbers, and hyphens. Used in the public URL.">
+      <input id="cat-slug" type="text" value={initial.slug} required />
+    </FormField>
+
+    <FormField label="Parent" for="cat-parent" hint="Leave empty for a top-level category.">
+      <select id="cat-parent">
+        <option value="" selected={initial.parent_id == null}>None (root)</option>
+        {
+          parentOptions.map((p) => (
+            <option value={p.id} selected={initial.parent_id === p.id}>
+              {p.name} ({p.full_path})
+            </option>
+          ))
+        }
+      </select>
+    </FormField>
+
+    <FormField label="Sort order" for="cat-sort">
+      <input id="cat-sort" type="number" value={String(initial.sort_order)} step="1" />
+    </FormField>
+
+    <FormField label="Description" for="cat-desc">
+      <textarea id="cat-desc" rows="3">{initial.description ?? ""}</textarea>
+    </FormField>
+
+    <details class="seo">
+      <summary>SEO</summary>
+      <FormField label="SEO title" for="cat-seo-title">
+        <input id="cat-seo-title" type="text" value={initial.seo_title ?? ""} />
+      </FormField>
+      <FormField label="SEO description" for="cat-seo-desc">
+        <textarea id="cat-seo-desc" rows="2">{initial.seo_description ?? ""}</textarea>
+      </FormField>
+    </details>
+
+    <div class="actions">
+      <button type="button" class="btn primary" data-save>Save</button>
+    </div>
+    <p class="status" data-status role="status" />
+  </section>
+</AdminLayout>
+
+<script is:inline define:vars={{ payload }}>
+  const statusEl = document.querySelector("[data-status]");
+  const nameInput = document.getElementById("cat-name");
+  const slugInput = document.getElementById("cat-slug");
+
+  function setStatus(message, isError) {
+    if (!statusEl) {
+      return;
+    }
+    statusEl.textContent = message;
+    statusEl.style.color = isError ? "#8b2942" : "#354139";
+  }
+
+  if (nameInput instanceof HTMLInputElement && slugInput instanceof HTMLInputElement) {
+    nameInput.addEventListener("blur", () => {
+      if (!slugInput.value.trim()) {
+        const t = nameInput.value
+          .trim()
+          .toLowerCase()
+          .replace(/'/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .replace(/-{2,}/g, "-");
+        slugInput.value = t || "category";
+      }
+    });
+  }
+
+  document.querySelector("[data-save]")?.addEventListener("click", async () => {
+    const name = nameInput instanceof HTMLInputElement ? nameInput.value.trim() : "";
+    const slug = slugInput instanceof HTMLInputElement ? slugInput.value.trim() : "";
+    const parentEl = document.getElementById("cat-parent");
+    const parentId =
+      parentEl instanceof HTMLSelectElement && parentEl.value
+        ? parentEl.value
+        : null;
+    const sortEl = document.getElementById("cat-sort");
+    const sortOrder =
+      sortEl instanceof HTMLInputElement ? Number(sortEl.value) || 0 : 0;
+    const descEl = document.getElementById("cat-desc");
+    const seoTitleEl = document.getElementById("cat-seo-title");
+    const seoDescEl = document.getElementById("cat-seo-desc");
+
+    const body = {
+      name,
+      slug,
+      parentId,
+      sortOrder,
+      description: descEl instanceof HTMLTextAreaElement ? descEl.value : "",
+      seoTitle: seoTitleEl instanceof HTMLInputElement ? seoTitleEl.value : "",
+      seoDescription: seoDescEl instanceof HTMLTextAreaElement ? seoDescEl.value : ""
+    };
+
+    const isNew = payload.mode === "new" || !payload.categoryId;
+    const url = isNew ? "/api/admin/categories" : `/api/admin/categories/${payload.categoryId}`;
+    const method = isNew ? "POST" : "PATCH";
+
+    setStatus("Saving…", false);
+    const res = await fetch(url, {
+      method,
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setStatus(data.error || "Save failed", true);
+      return;
+    }
+    setStatus("Saved.", false);
+    if (isNew && data.id) {
+      window.location.href = `/admin/categories/${data.id}/edit`;
+    }
+  });
+</script>
+
+<style>
+  .toolbar {
+    margin-bottom: 18px;
+  }
+
+  .back {
+    color: #2f6f4e;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .back:hover {
+    text-decoration: underline;
+  }
+
+  .panel {
+    max-width: 36rem;
+    background: #fff;
+    border: 1px solid #d8d2c7;
+    border-radius: 10px;
+    padding: 22px;
+    display: grid;
+    gap: 14px;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  select,
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border: 1px solid #c9c2b6;
+    border-radius: 6px;
+    font: inherit;
+  }
+
+  .seo {
+    border: 1px dashed #c9c2b6;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .seo summary {
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .actions {
+    margin-top: 6px;
+  }
+
+  .btn {
+    border: 1px solid #2a5d42;
+    background: #2f6f4e;
+    color: #fff;
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .btn:hover {
+    background: #285f43;
+  }
+
+  .status {
+    min-height: 1.2em;
+    font-size: 0.9rem;
+    margin: 0;
+  }
+</style>

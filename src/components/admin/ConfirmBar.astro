@@ -1,0 +1,30 @@
+---
+interface Props {
+  message: string;
+}
+
+const { message } = Astro.props;
+---
+
+<div class="confirm-bar" role="status">
+  <p>{message}</p>
+  <slot />
+</div>
+
+<style>
+  .confirm-bar {
+    border: 1px solid #cfc7b8;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: #f4efe4;
+  }
+
+  p {
+    margin: 0;
+    color: #465148;
+    font-size: 0.9rem;
+  }
+</style>
