@@ -1,0 +1,12 @@
+SITE_URL=http://localhost:8787
+ENVIRONMENT=development
+
+CF_ACCESS_TEAM_DOMAIN=https://example.cloudflareaccess.com
+CF_ACCESS_AUD=replace-with-access-application-audience
+
+# Optional local cache tuning.
+CFBLOG_CACHE_ENABLED=false
+
+# Optional update status endpoint. Serve either plain text like "0.1.1" or
+# JSON like {"version":"0.1.1","releaseUrl":"https://example.com/releases/0.1.1"}.
+CFBLOG_UPDATE_CHECK_URL=

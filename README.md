@@ -56,10 +56,11 @@ pnpm build
 pnpm preview
 pnpm deploy
 pnpm db:migrations:apply
+pnpm db:migrations:apply:local
 pnpm test
 ```
 
-Before running Wrangler preview or deploy, replace placeholder binding IDs in `wrangler.jsonc` with real Cloudflare resource IDs.
+Wrangler can automatically provision the D1, R2, and KV bindings declared in `wrangler.jsonc`. For local-only D1 migrations, use `pnpm db:migrations:apply:local`; the default migration script targets the remote D1 database for deployment.
 
 ## Admin Protection
 
@@ -118,5 +119,5 @@ Wrangler supports `CLOUDFLARE_API_KEY`, but that is the older global-key style a
 - Keep `.env` out of Git.
 - Keep `.env` out of AI context where possible.
 - Store production secrets in Cloudflare Worker secrets or CI/CD secret storage.
-- Do not place D1 database IDs, R2 bucket names, or KV namespace IDs in `.env` unless there is a specific local workflow reason; those values usually belong in `wrangler.jsonc`.
+- Do not place D1 database IDs, R2 bucket names, or KV namespace IDs in `.env`; Wrangler/Cloudflare should provision and bind those resources from `wrangler.jsonc`.
 - If a Cloudflare credential is exposed, rotate it immediately in the Cloudflare dashboard.
