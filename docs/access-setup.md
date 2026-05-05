@@ -42,4 +42,11 @@ Requests that fail validation return `403`.
 
 ## Local Development Note
 
-Local requests to `/admin` will return `403` unless you provide a valid Access JWT for the configured Access application. Public routes remain available without Access.
+CFblog includes a development-only bypass for admin authentication during local work.
+
+- The bypass only applies when the request host resolves to `localhost` or `127.0.0.1` (port is ignored).
+- The bypass only applies when `ENVIRONMENT=development` or Astro is running in dev mode.
+- All non-local hosts still require a valid `Cf-Access-Jwt-Assertion` token.
+- Deployed environments (`staging`/`production`) remain fail-closed and require normal Cloudflare Access JWT validation.
+
+Public routes remain available without Access.

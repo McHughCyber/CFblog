@@ -61,7 +61,7 @@ Before running Wrangler preview or deploy, replace placeholder binding IDs in `w
 
 ## Admin Protection
 
-Admin routes and admin API routes are protected by Cloudflare Access JWT validation. See [Cloudflare Access setup](docs/access-setup.md) for the required Access application and environment configuration.
+Admin routes and admin API routes are protected by Cloudflare Access JWT validation. In local development only, requests to `localhost`/`127.0.0.1` can bypass Access JWT checks when `ENVIRONMENT=development` (or Astro dev mode). See [Cloudflare Access setup](docs/access-setup.md) for full behaviour and required configuration.
 
 ## AI Crawler Guidance
 

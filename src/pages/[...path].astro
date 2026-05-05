@@ -1,7 +1,6 @@
 ---
 import { env } from "cloudflare:workers";
-import SiteFooter from "../components/site/SiteFooter.astro";
-import SiteHeader from "../components/site/SiteHeader.astro";
+import PublicLayout from "../components/site/PublicLayout.astro";
 import ThemeHead from "../components/site/ThemeHead.astro";
 import { getCategoryAncestors, getCategoryByFullPath } from "../lib/db/categories";
 import {
@@ -245,104 +244,106 @@ const jsonLd =
     <title>{title} | {site.title}</title>
   </head>
   <body data-post-listing={theme.postListingStyle}>
-    <SiteHeader siteTitle={site.title} primaryNav={nav.primary} logoPublicPath={theme.logoPublicPath} />
-    <main class="shell">
-      <nav class="breadcrumbs" aria-label="Breadcrumbs">
-        {page.breadcrumbs.map((crumb, index) => (
-          <>
-            {index > 0 && <span aria-hidden="true">/</span>}
-            {index === page.breadcrumbs.length - 1 ? (
-              <span aria-current="page">{crumb.label}</span>
-            ) : (
-              <a href={crumb.href}>{crumb.label}</a>
-            )}
-          </>
-        ))}
-      </nav>
-
-      {
-        page.kind === "post" ? (
-          <article class="post">
-            <header>
-              <p class="eyebrow">Article</p>
-              <h1>{page.post.title}</h1>
-              {postDisplayDate && (
-                <time datetime={postDisplayDate}>
-                  {new Intl.DateTimeFormat(site.language, {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric"
-                  }).format(new Date(postDisplayDate))}
-                </time>
+    <PublicLayout
+      siteTitle={site.title}
+      primaryNav={nav.primary}
+      footerNav={nav.footer}
+      logoPublicPath={theme.logoPublicPath}
+    >
+      <main class="shell">
+        <nav class="breadcrumbs" aria-label="Breadcrumbs">
+          {page.breadcrumbs.map((crumb, index) => (
+            <>
+              {index > 0 && <span aria-hidden="true">/</span>}
+              {index === page.breadcrumbs.length - 1 ? (
+                <span aria-current="page">{crumb.label}</span>
+              ) : (
+                <a href={crumb.href}>{crumb.label}</a>
               )}
-            </header>
-            <div class="content" set:html={page.html} />
-          </article>
-        ) : (
-          <section class="category">
-            <header>
-              <p class="eyebrow">Category</p>
-              <h1>{page.category.name}</h1>
-              {page.category.description && <p>{page.category.description}</p>}
-            </header>
-            {page.posts.length > 0 ? (
-              <ol>
-                {page.posts.map((post) => (
-                  <li>
-                    <a href={post.full_path}>{post.title}</a>
-                    {post.excerpt && <p>{post.excerpt}</p>}
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p class="empty">No published posts in this category yet.</p>
-            )}
-            {page.pagination.totalPages > 1 && (
-              <nav class="pagination" aria-label="Category post pages">
-                {page.pagination.hasPreviousPage ? (
-                  <a
-                    href={pageHref(
-                      page.category.full_path,
-                      page.pagination.currentPage - 1
-                    )}
-                  >
-                    Newer
-                  </a>
-                ) : (
-                  <span>Newer</span>
+            </>
+          ))}
+        </nav>
+
+        {
+          page.kind === "post" ? (
+            <article class="post">
+              <header>
+                <p class="eyebrow">Article</p>
+                <h1>{page.post.title}</h1>
+                {postDisplayDate && (
+                  <time datetime={postDisplayDate}>
+                    {new Intl.DateTimeFormat(site.language, {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric"
+                    }).format(new Date(postDisplayDate))}
+                  </time>
                 )}
-                <p>
-                  Page {page.pagination.currentPage} of{" "}
-                  {page.pagination.totalPages}
-                </p>
-                {page.pagination.hasNextPage ? (
-                  <a
-                    href={pageHref(
-                      page.category.full_path,
-                      page.pagination.currentPage + 1
-                    )}
-                  >
-                    Older
-                  </a>
-                ) : (
-                  <span>Older</span>
-                )}
-              </nav>
-            )}
-          </section>
-        )
-      }
-    </main>
-    <SiteFooter footerNav={nav.footer} />
+              </header>
+              <div class="content" set:html={page.html} />
+            </article>
+          ) : (
+            <section class="category">
+              <header>
+                <p class="eyebrow">Category</p>
+                <h1>{page.category.name}</h1>
+                {page.category.description && <p>{page.category.description}</p>}
+              </header>
+              {page.posts.length > 0 ? (
+                <ol>
+                  {page.posts.map((post) => (
+                    <li>
+                      <a href={post.full_path}>{post.title}</a>
+                      {post.excerpt && <p>{post.excerpt}</p>}
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p class="empty">No published posts in this category yet.</p>
+              )}
+              {page.pagination.totalPages > 1 && (
+                <nav class="pagination" aria-label="Category post pages">
+                  {page.pagination.hasPreviousPage ? (
+                    <a
+                      href={pageHref(
+                        page.category.full_path,
+                        page.pagination.currentPage - 1
+                      )}
+                    >
+                      Newer
+                    </a>
+                  ) : (
+                    <span>Newer</span>
+                  )}
+                  <p>
+                    Page {page.pagination.currentPage} of{" "}
+                    {page.pagination.totalPages}
+                  </p>
+                  {page.pagination.hasNextPage ? (
+                    <a
+                      href={pageHref(
+                        page.category.full_path,
+                        page.pagination.currentPage + 1
+                      )}
+                    >
+                      Older
+                    </a>
+                  ) : (
+                    <span>Older</span>
+                  )}
+                </nav>
+              )}
+            </section>
+          )
+        }
+      </main>
+    </PublicLayout>
   </body>
 </html>
 
 <style>
   body {
     margin: 0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
   }
 
   .shell {

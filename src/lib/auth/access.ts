@@ -12,6 +12,10 @@ export interface AccessConfig {
   audience?: string;
 }
 
+export interface AccessBypassEnv {
+  ENVIRONMENT?: string;
+}
+
 export interface AccessUser {
   email: string | null;
   payload: JWTPayload;
@@ -44,6 +48,53 @@ export function getAccessConfig(env: {
 
 export function getAccessToken(request: Request): string | null {
   return request.headers.get(accessJwtHeaderName);
+}
+
+function stripPortFromHost(rawHost: string): string {
+  const host = rawHost.trim().toLowerCase();
+  if (!host) {
+    return host;
+  }
+
+  // IPv6 hosts are not expected in this project for local bypass,
+  // but keep bracket handling predictable for fail-closed checks.
+  if (host.startsWith("[") && host.endsWith("]")) {
+    return host.slice(1, -1);
+  }
+
+  const lastColonIndex = host.lastIndexOf(":");
+  if (lastColonIndex === -1) {
+    return host;
+  }
+
+  return host.slice(0, lastColonIndex);
+}
+
+export function getRequestHostname(request: Request): string {
+  const hostHeader = request.headers.get("host");
+  if (hostHeader) {
+    return stripPortFromHost(hostHeader);
+  }
+
+  try {
+    return new URL(request.url).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+export function isLocalDevelopmentBypassAllowed(
+  request: Request,
+  env: AccessBypassEnv,
+  options: { astroDevMode?: boolean } = {}
+): boolean {
+  const isDevelopmentEnv = env.ENVIRONMENT === "development";
+  if (!isDevelopmentEnv && !options.astroDevMode) {
+    return false;
+  }
+
+  const hostname = getRequestHostname(request);
+  return hostname === "localhost" || hostname === "127.0.0.1";
 }
 
 export async function validateAccessRequest(

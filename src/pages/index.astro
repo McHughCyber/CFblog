@@ -1,7 +1,6 @@
 ---
 import { env } from "cloudflare:workers";
-import SiteFooter from "../components/site/SiteFooter.astro";
-import SiteHeader from "../components/site/SiteHeader.astro";
+import PublicLayout from "../components/site/PublicLayout.astro";
 import ThemeHead from "../components/site/ThemeHead.astro";
 import { loadPublicNavigation } from "../lib/menus/public-navigation";
 import { countPublishedPosts, listPublishedPosts } from "../lib/db/posts";
@@ -120,84 +119,86 @@ const pageTitle =
     <title>{pageTitle}</title>
   </head>
   <body data-home-layout={theme.homepageLayout} data-post-listing={theme.postListingStyle}>
-    <SiteHeader siteTitle={site.title} primaryNav={nav.primary} logoPublicPath={theme.logoPublicPath} />
-    <main class="shell">
-      <section class="intro">
-        <p class="eyebrow">Cloudflare-native publishing</p>
-        <h1>{site.title}</h1>
-        <p>{site.description}</p>
-      </section>
+    <PublicLayout
+      siteTitle={site.title}
+      primaryNav={nav.primary}
+      footerNav={nav.footer}
+      logoPublicPath={theme.logoPublicPath}
+    >
+      <main class="shell">
+        <section class="intro">
+          <p class="eyebrow">Cloudflare-native publishing</p>
+          <h1>{site.title}</h1>
+          <p>{site.description}</p>
+        </section>
 
-      <section class="posts" aria-labelledby="latest-heading">
-        <div class="section-heading">
-          <h2 id="latest-heading">Latest Posts</h2>
-          <span>{totalPosts} published</span>
-        </div>
+        <section class="posts" aria-labelledby="latest-heading">
+          <div class="section-heading">
+            <h2 id="latest-heading">Latest Posts</h2>
+            <span>{totalPosts} published</span>
+          </div>
 
-        {
-          posts.length > 0 ? (
-            <ol>
-              {posts.map((post) => (
-                <li>
-                  <a href={post.full_path}>
-                    <span>{post.title}</span>
-                    <time datetime={post.published_at ?? post.created_at}>
-                      {new Intl.DateTimeFormat(site.language, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric"
-                      }).format(
-                        new Date(post.published_at ?? post.created_at)
-                      )}
-                    </time>
-                  </a>
-                  {post.excerpt && <p>{post.excerpt}</p>}
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p class="empty">No published posts yet.</p>
-          )
-        }
+          {
+            posts.length > 0 ? (
+              <ol>
+                {posts.map((post) => (
+                  <li>
+                    <a href={post.full_path}>
+                      <span>{post.title}</span>
+                      <time datetime={post.published_at ?? post.created_at}>
+                        {new Intl.DateTimeFormat(site.language, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric"
+                        }).format(
+                          new Date(post.published_at ?? post.created_at)
+                        )}
+                      </time>
+                    </a>
+                    {post.excerpt && <p>{post.excerpt}</p>}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p class="empty">No published posts yet.</p>
+            )
+          }
 
-        {
-          pagination.totalPages > 1 && (
-            <nav class="pagination" aria-label="Post pages">
-              {pagination.hasPreviousPage ? (
-                <a href={pageHref("/", pagination.currentPage - 1)}>Newer</a>
-              ) : (
-                <span>Newer</span>
-              )}
-              <p>
-                Page {pagination.currentPage} of {pagination.totalPages}
-              </p>
-              {pagination.hasNextPage ? (
-                <a href={pageHref("/", pagination.currentPage + 1)}>Older</a>
-              ) : (
-                <span>Older</span>
-              )}
-            </nav>
-          )
-        }
-      </section>
+          {
+            pagination.totalPages > 1 && (
+              <nav class="pagination" aria-label="Post pages">
+                {pagination.hasPreviousPage ? (
+                  <a href={pageHref("/", pagination.currentPage - 1)}>Newer</a>
+                ) : (
+                  <span>Newer</span>
+                )}
+                <p>
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </p>
+                {pagination.hasNextPage ? (
+                  <a href={pageHref("/", pagination.currentPage + 1)}>Older</a>
+                ) : (
+                  <span>Older</span>
+                )}
+              </nav>
+            )
+          }
+        </section>
 
-      <section class="status" aria-label="Template status">
-        <p>v{templateVersion}</p>
-        <p>Workers SSR</p>
-        <p>D1 content</p>
-        <p>R2 media ready</p>
-      </section>
-    </main>
-    <SiteFooter footerNav={nav.footer} />
+        <section class="status" aria-label="Template status">
+          <p>v{templateVersion}</p>
+          <p>Workers SSR</p>
+          <p>D1 content</p>
+          <p>R2 media ready</p>
+        </section>
+      </main>
+    </PublicLayout>
   </body>
 </html>
 
 <style>
   body {
     margin: 0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
   }
 
   .shell {
@@ -205,14 +206,14 @@ const pageTitle =
     min-height: 100vh;
     width: min(100%, 1120px);
     margin: 0 auto;
-    padding: 56px 24px;
+    padding: clamp(20px, 3vh, 36px) 24px 56px;
     display: grid;
-    gap: 44px;
+    gap: 28px;
   }
 
   .intro {
     max-width: 840px;
-    padding-top: 8vh;
+    padding-top: clamp(12px, 2vh, 24px);
   }
 
   .eyebrow {

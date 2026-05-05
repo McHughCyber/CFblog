@@ -4,15 +4,21 @@ import type { ResolvedMenuNode } from "../../lib/menus/resolve";
 interface Props {
   nodes: ResolvedMenuNode[];
   nested?: boolean;
+  level?: number;
+  mode?: "primary" | "footer";
 }
 
-const { nodes, nested = false } = Astro.props;
+const { nodes, nested = false, level = 0, mode = "primary" } = Astro.props;
 ---
 
-<ul class:list={["nav-list", nested && "nested"]}>
+<ul
+  class:list={["nav-list", nested && "nested", mode === "footer" && "mode-footer", mode === "primary" && "mode-primary"]}
+  data-nav-root={level === 0 ? "true" : undefined}
+  data-nav-mode={mode}
+>
   {
     nodes.map((n) => (
-      <li>
+      <li class:list={["nav-item", n.children.length > 0 && "has-children"]}>
         {n.openInNewTab ? (
           <a href={n.href} target="_blank" rel="noopener noreferrer">
             {n.label}
@@ -20,7 +26,7 @@ const { nodes, nested = false } = Astro.props;
         ) : (
           <a href={n.href}>{n.label}</a>
         )}
-        {n.children.length > 0 && <Astro.self nodes={n.children} nested />}
+        {n.children.length > 0 && <Astro.self nodes={n.children} nested level={level + 1} mode={mode} />}
       </li>
     ))
   }
@@ -37,14 +43,46 @@ const { nodes, nested = false } = Astro.props;
     align-items: center;
   }
 
-  .nav-list.nested {
+  .nav-item {
+    position: relative;
+  }
+
+  .nav-list.mode-primary.nested {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 25;
+    min-width: 220px;
     flex-direction: column;
     align-items: flex-start;
-    margin-top: 6px;
-    margin-left: 12px;
-    padding-left: 10px;
-    border-left: 1px solid color-mix(in srgb, var(--cf-border) 85%, transparent);
-    gap: 4px;
+    margin-top: 0;
+    margin-left: 0;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--cf-border) 80%, transparent);
+    border-radius: 10px;
+    background: var(--cf-bg);
+    box-shadow: 0 12px 24px color-mix(in srgb, #000 16%, transparent);
+    gap: 8px;
+    flex-wrap: nowrap;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(4px);
+    transition: opacity 140ms ease, transform 140ms ease, visibility 0s linear 140ms;
+  }
+
+  .nav-list.mode-primary.nested .nav-list.mode-primary.nested {
+    top: -8px;
+    left: calc(100% + 8px);
+  }
+
+  .nav-item.is-open > .nav-list.mode-primary.nested,
+  .nav-item:focus-within > .nav-list.mode-primary.nested {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+    transition-delay: 0s;
   }
 
   .nav-list a {
@@ -58,4 +96,168 @@ const { nodes, nested = false } = Astro.props;
   .nav-list a:hover {
     text-decoration: underline;
   }
+
+  .nav-list.mode-primary .has-children > a::after {
+    content: " \25BE";
+    font-size: 0.72em;
+  }
+
+  .nav-list.mode-footer.nested {
+    position: static;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    transition: none;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    margin-left: 10px;
+    min-width: 0;
+    gap: 6px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  @media (max-width: 840px) {
+    .nav-list {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .nav-list.mode-primary.nested,
+    .nav-list.mode-primary.nested .nav-list.mode-primary.nested {
+      position: static;
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+      transform: none;
+      box-shadow: none;
+      min-width: 0;
+      margin-left: 10px;
+    }
+  }
 </style>
+
+{
+  level === 0 && mode === "primary" && (
+    <script>
+      (() => {
+        const navRoots = document.querySelectorAll(
+          '.nav-list[data-nav-root="true"][data-nav-mode="primary"]'
+        );
+        if (navRoots.length === 0 || window.matchMedia("(max-width: 840px)").matches) {
+          return;
+        }
+
+        const OPEN_DELAY_MS = 130;
+        const CLOSE_DELAY_MS = 170;
+        const INTENT_CLOSE_DELAY_MS = 340;
+
+        let previousPoint = { x: 0, y: 0 };
+        let currentPoint = { x: 0, y: 0 };
+
+        document.addEventListener(
+          "mousemove",
+          (event) => {
+            previousPoint = currentPoint;
+            currentPoint = { x: event.clientX, y: event.clientY };
+          },
+          { passive: true }
+        );
+
+        const openTimers = new WeakMap();
+        const closeTimers = new WeakMap();
+
+        const clearTimer = (timerMap, item) => {
+          const timer = timerMap.get(item);
+          if (timer) {
+            window.clearTimeout(timer);
+            timerMap.delete(item);
+          }
+        };
+
+        const closeDescendants = (item) => {
+          item.querySelectorAll(":scope .nav-item.is-open").forEach((openItem) => {
+            if (openItem instanceof HTMLElement) {
+              openItem.classList.remove("is-open");
+            }
+          });
+        };
+
+        const closeSiblings = (item) => {
+          const parent = item.parentElement;
+          if (!parent) {
+            return;
+          }
+          parent.querySelectorAll(":scope > .nav-item.is-open").forEach((openItem) => {
+            if (openItem !== item && openItem instanceof HTMLElement) {
+              openItem.classList.remove("is-open");
+              closeDescendants(openItem);
+              clearTimer(openTimers, openItem);
+              clearTimer(closeTimers, openItem);
+            }
+          });
+        };
+
+        const isPointerMovingToSubmenu = (item) => {
+          const submenu = item.querySelector(":scope > .nav-list.nested");
+          if (!(submenu instanceof HTMLElement)) {
+            return false;
+          }
+
+          const rect = submenu.getBoundingClientRect();
+          const dx = currentPoint.x - previousPoint.x;
+          const dy = currentPoint.y - previousPoint.y;
+
+          const towardRightFlyout =
+            rect.left >= item.getBoundingClientRect().right - 1 &&
+            dx > 0 &&
+            currentPoint.x <= rect.right + 28 &&
+            currentPoint.y >= rect.top - 38 &&
+            currentPoint.y <= rect.bottom + 38;
+
+          const towardDownDropdown =
+            rect.top >= item.getBoundingClientRect().bottom - 1 &&
+            dy > 0 &&
+            currentPoint.y <= rect.bottom + 24 &&
+            currentPoint.x >= rect.left - 42 &&
+            currentPoint.x <= rect.right + 42;
+
+          return towardRightFlyout || towardDownDropdown;
+        };
+
+        navRoots.forEach((root) => {
+          root.querySelectorAll(".nav-item.has-children").forEach((item) => {
+            if (!(item instanceof HTMLElement)) {
+              return;
+            }
+
+            item.addEventListener("mouseenter", () => {
+              clearTimer(closeTimers, item);
+              clearTimer(openTimers, item);
+
+              const timer = window.setTimeout(() => {
+                closeSiblings(item);
+                item.classList.add("is-open");
+              }, OPEN_DELAY_MS);
+              openTimers.set(item, timer);
+            });
+
+            item.addEventListener("mouseleave", () => {
+              clearTimer(openTimers, item);
+              clearTimer(closeTimers, item);
+
+              const delay = isPointerMovingToSubmenu(item) ? INTENT_CLOSE_DELAY_MS : CLOSE_DELAY_MS;
+              const timer = window.setTimeout(() => {
+                item.classList.remove("is-open");
+                closeDescendants(item);
+              }, delay);
+              closeTimers.set(item, timer);
+            });
+          });
+        });
+      })();
+    </script>
+  )
+}

@@ -3,12 +3,14 @@ import { env } from "cloudflare:workers";
 import {
   forbidden,
   getAccessConfig,
+  isLocalDevelopmentBypassAllowed,
   validateAccessRequest
 } from "./lib/auth/access";
 
 interface AccessEnv {
   CF_ACCESS_TEAM_DOMAIN?: string;
   CF_ACCESS_AUD?: string;
+  ENVIRONMENT?: string;
 }
 
 function requiresAdminAccess(pathname: string): boolean {
@@ -18,6 +20,14 @@ function requiresAdminAccess(pathname: string): boolean {
 
 export const onRequest = defineMiddleware(async (context, next) => {
   if (!requiresAdminAccess(context.url.pathname)) {
+    return next();
+  }
+
+  if (
+    isLocalDevelopmentBypassAllowed(context.request, env as AccessEnv, {
+      astroDevMode: import.meta.env.DEV
+    })
+  ) {
     return next();
   }
 

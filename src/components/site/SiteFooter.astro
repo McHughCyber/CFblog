@@ -1,31 +1,36 @@
 ---
 import NavList from "./NavList.astro";
+import { buildFooterRenderModel } from "../../lib/menus/footer-render";
 import type { ResolvedMenuNode } from "../../lib/menus/resolve";
 
 interface Props {
   footerNav: ResolvedMenuNode[];
+  siteTitle: string;
 }
 
-const { footerNav } = Astro.props;
+const { footerNav, siteTitle } = Astro.props;
+const footerModel = buildFooterRenderModel(footerNav, siteTitle);
 ---
 
-{
-  footerNav.length > 0 && (
-    <footer class="site-footer">
-      <div class="inner">
+<footer class="site-footer">
+  <div class="inner">
+    {
+      footerModel.showNav ? (
         <nav aria-label="Footer navigation">
-          <NavList nodes={footerNav} />
+          <NavList nodes={footerNav} mode="footer" />
         </nav>
-      </div>
-    </footer>
-  )
-}
+      ) : (
+        <p class="fallback">{footerModel.fallbackText}</p>
+      )
+    }
+  </div>
+</footer>
 
 <style>
   .site-footer {
-    margin-top: auto;
     border-top: 1px solid color-mix(in srgb, var(--cf-border) 70%, transparent);
     background: var(--cf-footer-bg);
+    margin-top: auto;
   }
 
   .inner {
@@ -33,5 +38,12 @@ const { footerNav } = Astro.props;
     width: min(100%, 1120px);
     margin: 0 auto;
     padding: 18px 24px;
+  }
+
+  .fallback {
+    margin: 0;
+    color: color-mix(in srgb, var(--cf-text) 62%, var(--cf-muted));
+    font-family: var(--cf-font-ui);
+    font-size: 0.9rem;
   }
 </style>

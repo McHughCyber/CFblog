@@ -1,7 +1,9 @@
 ---
 import { env } from "cloudflare:workers";
+import PublicLayout from "../components/site/PublicLayout.astro";
 import ThemeHead from "../components/site/ThemeHead.astro";
 import { getSetting } from "../lib/db/settings";
+import { loadPublicNavigation } from "../lib/menus/public-navigation";
 import { loadTheme } from "../lib/theme/load";
 
 export const prerender = false;
@@ -13,6 +15,7 @@ interface RuntimeEnv {
 const runtimeEnv = env as RuntimeEnv;
 const theme = await loadTheme(runtimeEnv.CFBLOG_DB);
 const site = await getSetting<{ title: string }>(runtimeEnv.CFBLOG_DB, "site");
+const nav = await loadPublicNavigation(runtimeEnv.CFBLOG_DB);
 const siteTitle = site?.title ?? "CFblog";
 const requestedPath = Astro.originPathname;
 ---
@@ -26,12 +29,19 @@ const requestedPath = Astro.originPathname;
     <title>Not Found | {siteTitle}</title>
   </head>
   <body>
-    <main>
-      <a href="/">{siteTitle}</a>
-      <p>404</p>
-      <h1>That path has no published page.</h1>
-      <code>{requestedPath}</code>
-    </main>
+    <PublicLayout
+      siteTitle={siteTitle}
+      primaryNav={nav.primary}
+      footerNav={nav.footer}
+      logoPublicPath={theme.logoPublicPath}
+    >
+      <main>
+        <a href="/">{siteTitle}</a>
+        <p>404</p>
+        <h1>That path has no published page.</h1>
+        <code>{requestedPath}</code>
+      </main>
+    </PublicLayout>
   </body>
 </html>
 

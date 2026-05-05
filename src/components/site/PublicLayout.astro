@@ -1,0 +1,28 @@
+---
+import SiteFooter from "./SiteFooter.astro";
+import SiteHeader from "./SiteHeader.astro";
+import type { ResolvedMenuNode } from "../../lib/menus/resolve";
+
+interface Props {
+  siteTitle: string;
+  primaryNav: ResolvedMenuNode[];
+  footerNav: ResolvedMenuNode[];
+  logoPublicPath?: string | null;
+}
+
+const { siteTitle, primaryNav, footerNav, logoPublicPath = null } = Astro.props;
+---
+
+<div class="public-layout">
+  <SiteHeader siteTitle={siteTitle} primaryNav={primaryNav} logoPublicPath={logoPublicPath} />
+  <slot />
+  <SiteFooter footerNav={footerNav} siteTitle={siteTitle} />
+</div>
+
+<style>
+  .public-layout {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+</style>
