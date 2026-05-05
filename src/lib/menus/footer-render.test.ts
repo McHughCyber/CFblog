@@ -7,6 +7,7 @@ function menuNode(label: string): ResolvedMenuNode {
     id: label.toLowerCase().replace(/\s+/g, "-"),
     label,
     href: `/${label.toLowerCase().replace(/\s+/g, "-")}`,
+    ok: true,
     openInNewTab: false,
     children: []
   };

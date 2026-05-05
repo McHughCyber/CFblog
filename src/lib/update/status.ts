@@ -16,7 +16,8 @@ export const LOCAL_MIGRATIONS = [
   "0002_seed_defaults",
   "0003_ai_traffic_settings",
   "0004_update_strategy",
-  "0005_milestone_review_fixes"
+  "0005_milestone_review_fixes",
+  "0006_integrations_settings"
 ];
 
 export async function getUpdateStatus(database: D1Database): Promise<UpdateStatus> {

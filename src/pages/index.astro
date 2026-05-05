@@ -1,11 +1,15 @@
 ---
 import { env } from "cloudflare:workers";
+import AdSenseSlot from "../components/site/AdSenseSlot.astro";
+import IntegrationsHead from "../components/site/IntegrationsHead.astro";
 import PublicLayout from "../components/site/PublicLayout.astro";
 import ThemeHead from "../components/site/ThemeHead.astro";
 import { loadPublicNavigation } from "../lib/menus/public-navigation";
 import { countPublishedPosts, listPublishedPosts } from "../lib/db/posts";
 import { getMediaAssetById } from "../lib/db/media";
 import { getSetting } from "../lib/db/settings";
+import { loadIntegrationsSettings } from "../lib/integrations/load";
+import { shouldRenderAdSenseSlot } from "../lib/integrations/render";
 import { loadTheme } from "../lib/theme/load";
 import { createPagination, pageHref, parsePage } from "../lib/pagination";
 import { absoluteUrl } from "../lib/seo";
@@ -52,8 +56,11 @@ const posts: PostRecord[] = await listPublishedPosts(runtimeEnv.CFBLOG_DB, {
   limit: pagination.perPage,
   offset: pagination.offset
 });
-const nav = await loadPublicNavigation(runtimeEnv.CFBLOG_DB);
-const theme = await loadTheme(runtimeEnv.CFBLOG_DB);
+const [nav, theme, integrations] = await Promise.all([
+  loadPublicNavigation(runtimeEnv.CFBLOG_DB),
+  loadTheme(runtimeEnv.CFBLOG_DB),
+  loadIntegrationsSettings(runtimeEnv.CFBLOG_DB)
+]);
 const canonicalUrl = absoluteUrl({ siteUrl: runtimeEnv.SITE_URL, path: "/" });
 const defaultOgImage = site.defaultOgImageAssetId
   ? await getMediaAssetById(runtimeEnv.CFBLOG_DB, site.defaultOgImageAssetId)
@@ -65,6 +72,10 @@ const pageTitle =
   pagination.currentPage > 1
     ? `${site.title} - Page ${pagination.currentPage}`
     : site.title;
+const showHomepageAd = shouldRenderAdSenseSlot(
+  integrations,
+  "homepageAfterFirstPost"
+);
 ---
 
 <html lang={site.language}>
@@ -72,6 +83,7 @@ const pageTitle =
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <ThemeHead theme={theme} />
+    <IntegrationsHead integrations={integrations} />
     <meta name="description" content={site.description} />
     <link rel="canonical" href={canonicalUrl} />
     {
@@ -124,6 +136,7 @@ const pageTitle =
       primaryNav={nav.primary}
       footerNav={nav.footer}
       logoPublicPath={theme.logoPublicPath}
+      integrations={integrations}
     >
       <main class="shell">
         <section class="intro">
@@ -141,22 +154,32 @@ const pageTitle =
           {
             posts.length > 0 ? (
               <ol>
-                {posts.map((post) => (
-                  <li>
-                    <a href={post.full_path}>
-                      <span>{post.title}</span>
-                      <time datetime={post.published_at ?? post.created_at}>
-                        {new Intl.DateTimeFormat(site.language, {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric"
-                        }).format(
-                          new Date(post.published_at ?? post.created_at)
-                        )}
-                      </time>
-                    </a>
-                    {post.excerpt && <p>{post.excerpt}</p>}
-                  </li>
+                {posts.map((post, index) => (
+                  <>
+                    <li>
+                      <a href={post.full_path}>
+                        <span>{post.title}</span>
+                        <time datetime={post.published_at ?? post.created_at}>
+                          {new Intl.DateTimeFormat(site.language, {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric"
+                          }).format(
+                            new Date(post.published_at ?? post.created_at)
+                          )}
+                        </time>
+                      </a>
+                      {post.excerpt && <p>{post.excerpt}</p>}
+                    </li>
+                    {index === 0 && showHomepageAd && (
+                      <li class="ad-list-item">
+                        <AdSenseSlot
+                          integrations={integrations}
+                          placement="homepageAfterFirstPost"
+                        />
+                      </li>
+                    )}
+                  </>
                 ))}
               </ol>
             ) : (
@@ -278,6 +301,10 @@ const pageTitle =
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  .ad-list-item {
+    border-bottom: 1px solid var(--cf-border);
   }
 
   li {

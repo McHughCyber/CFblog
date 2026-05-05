@@ -6,6 +6,12 @@ import FormField from "../../../components/admin/FormField.astro";
 import { loadAiTrafficSettings } from "../../../lib/ai-traffic/load";
 import type { AiTrafficSettings } from "../../../lib/ai-traffic/schema";
 import { getSetting } from "../../../lib/db/settings";
+import { loadIntegrationsSettings } from "../../../lib/integrations/load";
+import {
+  ADSENSE_PLACEMENT_KEYS,
+  type AdSensePlacementKey,
+  type IntegrationsSettings
+} from "../../../lib/integrations/schema";
 
 interface RuntimeEnv {
   CFBLOG_DB: D1Database;
@@ -19,12 +25,21 @@ interface SiteSettings {
 }
 
 const runtimeEnv = env as RuntimeEnv;
-const [site, aiTraffic] = await Promise.all([
+const [site, aiTraffic, integrations] = await Promise.all([
   getSetting<SiteSettings>(runtimeEnv.CFBLOG_DB, "site"),
-  loadAiTrafficSettings(runtimeEnv.CFBLOG_DB)
+  loadAiTrafficSettings(runtimeEnv.CFBLOG_DB),
+  loadIntegrationsSettings(runtimeEnv.CFBLOG_DB)
 ]);
 
 const initialAiTraffic: AiTrafficSettings = aiTraffic;
+const initialIntegrations: IntegrationsSettings = integrations;
+const placementLabels: Record<AdSensePlacementKey, string> = {
+  postTop: "Post top",
+  postAfterContent: "Post after content",
+  homepageAfterFirstPost: "Homepage after first post",
+  categoryAfterFirstPost: "Category after first post",
+  siteFooter: "Site footer"
+};
 ---
 
 <AdminLayout title="Settings">
@@ -119,12 +134,119 @@ const initialAiTraffic: AiTrafficSettings = aiTraffic;
       </div>
       <p class="status" id="ai-traffic-status" role="status" />
     </form>
+
+    <form class="panel" id="integrations-form">
+      <ConfirmBar message="Google integrations render only on public pages after they are enabled with valid IDs. Consent and privacy requirements remain the site operator's responsibility." />
+
+      <section class="subpanel" aria-labelledby="analytics-heading">
+        <h2 id="analytics-heading">Google Analytics</h2>
+        <div class="toggle-grid">
+          <label>
+            <input
+              id="ga-enabled"
+              type="checkbox"
+              checked={initialIntegrations.googleAnalytics.enabled}
+            />
+            Enable Analytics
+          </label>
+        </div>
+        <FormField
+          for="ga-measurement-id"
+          label="Measurement ID"
+          hint="Use a GA4 Measurement ID such as G-XXXXXXXX."
+        >
+          <input
+            id="ga-measurement-id"
+            name="measurementId"
+            type="text"
+            value={initialIntegrations.googleAnalytics.measurementId ?? ""}
+            placeholder="G-XXXXXXXX"
+          />
+        </FormField>
+      </section>
+
+      <section class="subpanel" aria-labelledby="adsense-heading">
+        <h2 id="adsense-heading">Google AdSense</h2>
+        <div class="toggle-grid">
+          <label>
+            <input
+              id="adsense-enabled"
+              type="checkbox"
+              checked={initialIntegrations.googleAdSense.enabled}
+            />
+            Enable AdSense
+          </label>
+        </div>
+
+        <FormField
+          for="adsense-publisher-id"
+          label="Publisher ID"
+          hint="Use the AdSense Publisher ID such as ca-pub-0000000000000000."
+        >
+          <input
+            id="adsense-publisher-id"
+            name="publisherId"
+            type="text"
+            value={initialIntegrations.googleAdSense.publisherId ?? ""}
+            placeholder="ca-pub-0000000000000000"
+          />
+        </FormField>
+
+        <FormField
+          for="adsense-mode"
+          label="Ad mode"
+          hint="Auto ads lets Google choose placements. Manual placements use the fixed slots below."
+        >
+          <select id="adsense-mode" name="mode">
+            <option value="auto" selected={initialIntegrations.googleAdSense.mode === "auto"}>Auto ads</option>
+            <option value="manual" selected={initialIntegrations.googleAdSense.mode === "manual"}>Manual placements</option>
+          </select>
+        </FormField>
+
+        <div class="placements-table" aria-label="Manual AdSense placements">
+          <div class="placements-row placements-head" aria-hidden="true">
+            <span>Placement</span>
+            <span>Enabled</span>
+            <span>Slot ID</span>
+          </div>
+          {
+            ADSENSE_PLACEMENT_KEYS.map((key) => (
+              <div class="placements-row">
+                <label for={`adsense-${key}-slot`}>{placementLabels[key]}</label>
+                <input
+                  id={`adsense-${key}-enabled`}
+                  data-placement-enabled={key}
+                  type="checkbox"
+                  checked={initialIntegrations.googleAdSense.placements[key].enabled}
+                  aria-label={`Enable ${placementLabels[key]}`}
+                />
+                <input
+                  id={`adsense-${key}-slot`}
+                  data-placement-slot={key}
+                  type="text"
+                  inputmode="numeric"
+                  value={initialIntegrations.googleAdSense.placements[key].slotId ?? ""}
+                  placeholder="1234567890"
+                />
+              </div>
+            ))
+          }
+        </div>
+      </section>
+
+      <div class="actions">
+        <button type="submit" class="btn primary">Save Google integrations</button>
+      </div>
+      <p class="status" id="integrations-status" role="status" />
+    </form>
   </div>
 </AdminLayout>
 
 <script>
   const form = document.getElementById("ai-traffic-form");
   const statusEl = document.getElementById("ai-traffic-status");
+  const integrationsForm = document.getElementById("integrations-form");
+  const integrationsStatusEl = document.getElementById("integrations-status");
 
   function setStatus(message: string, isError: boolean) {
     if (!(statusEl instanceof HTMLElement)) {
@@ -132,6 +254,14 @@ const initialAiTraffic: AiTrafficSettings = aiTraffic;
     }
     statusEl.textContent = message;
     statusEl.style.color = isError ? "#8b2942" : "#354139";
+  }
+
+  function setIntegrationsStatus(message: string, isError: boolean) {
+    if (!(integrationsStatusEl instanceof HTMLElement)) {
+      return;
+    }
+    integrationsStatusEl.textContent = message;
+    integrationsStatusEl.style.color = isError ? "#8b2942" : "#354139";
   }
 
   function textareaValue(id: string): string {
@@ -151,6 +281,25 @@ const initialAiTraffic: AiTrafficSettings = aiTraffic;
   function checked(id: string): boolean {
     const el = document.getElementById(id);
     return el instanceof HTMLInputElement ? el.checked : false;
+  }
+
+  function collectPlacements() {
+    const placements: Record<string, { enabled: boolean; slotId: string | null }> = {};
+    document.querySelectorAll("[data-placement-slot]").forEach((slotEl) => {
+      if (!(slotEl instanceof HTMLInputElement)) {
+        return;
+      }
+      const key = slotEl.dataset.placementSlot;
+      if (!key) {
+        return;
+      }
+      const enabledEl = document.querySelector(`[data-placement-enabled="${key}"]`);
+      placements[key] = {
+        enabled: enabledEl instanceof HTMLInputElement ? enabledEl.checked : false,
+        slotId: slotEl.value.trim().length > 0 ? slotEl.value.trim() : null
+      };
+    });
+    return placements;
   }
 
   function errorMessage(payload: unknown): string | null {
@@ -193,6 +342,41 @@ const initialAiTraffic: AiTrafficSettings = aiTraffic;
     }
     setStatus("AI settings saved.", false);
   });
+
+  integrationsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const modeEl = document.getElementById("adsense-mode");
+    const body = {
+      googleAnalytics: {
+        enabled: checked("ga-enabled"),
+        measurementId: inputValue("ga-measurement-id")
+      },
+      googleAdSense: {
+        enabled: checked("adsense-enabled"),
+        publisherId: inputValue("adsense-publisher-id"),
+        mode: modeEl instanceof HTMLSelectElement ? modeEl.value : "auto",
+        placements: collectPlacements()
+      }
+    };
+
+    setIntegrationsStatus("Saving...", false);
+    const res = await fetch("/api/admin/settings/integrations", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setIntegrationsStatus(
+        errorMessage(payload) ?? "Could not save Google integrations.",
+        true
+      );
+      return;
+    }
+    setIntegrationsStatus("Google integrations saved.", false);
+  });
 </script>
 
 <style>
@@ -206,6 +390,23 @@ const initialAiTraffic: AiTrafficSettings = aiTraffic;
   .panel {
     display: grid;
     gap: 18px;
+  }
+
+  .subpanel {
+    display: grid;
+    gap: 16px;
+    border-top: 1px solid #d8d0c2;
+    padding-top: 18px;
+  }
+
+  .subpanel:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .subpanel h2 {
+    margin: 0;
+    font-size: 1.05rem;
   }
 
   input,
@@ -248,6 +449,37 @@ const initialAiTraffic: AiTrafficSettings = aiTraffic;
     width: auto;
   }
 
+  .placements-table {
+    display: grid;
+    gap: 0;
+    border: 1px solid #d8d0c2;
+    background: #fffdf8;
+  }
+
+  .placements-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) 96px minmax(150px, 1fr);
+    gap: 12px;
+    align-items: center;
+    border-top: 1px solid #d8d0c2;
+    padding: 10px 12px;
+  }
+
+  .placements-row:first-child {
+    border-top: 0;
+  }
+
+  .placements-head {
+    color: #6d746e;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .placements-row input[type="checkbox"] {
+    width: auto;
+  }
+
   .actions {
     display: flex;
     gap: 12px;
@@ -271,5 +503,15 @@ const initialAiTraffic: AiTrafficSettings = aiTraffic;
   .status {
     min-height: 1.4em;
     margin: 0;
+  }
+
+  @media (max-width: 640px) {
+    .placements-head {
+      display: none;
+    }
+
+    .placements-row {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

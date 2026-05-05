@@ -97,4 +97,4 @@ The update check is read-only. It never pulls code, applies migrations, or deplo
 
 | Template version | Schema version       | Required migrations                         |
 | ---------------- | -------------------- | ------------------------------------------- |
-| 0.1.0            | 0005_milestone_review_fixes | 0001 through 0005 in order.        |
+| 0.1.0            | 0006_integrations_settings | 0001 through 0006 in order.        |

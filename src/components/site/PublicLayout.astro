@@ -1,6 +1,8 @@
 ---
 import SiteFooter from "./SiteFooter.astro";
 import SiteHeader from "./SiteHeader.astro";
+import AdSenseSlot from "./AdSenseSlot.astro";
+import type { IntegrationsSettings } from "../../lib/integrations/schema";
 import type { ResolvedMenuNode } from "../../lib/menus/resolve";
 
 interface Props {
@@ -8,14 +10,22 @@ interface Props {
   primaryNav: ResolvedMenuNode[];
   footerNav: ResolvedMenuNode[];
   logoPublicPath?: string | null;
+  integrations?: IntegrationsSettings | null;
 }
 
-const { siteTitle, primaryNav, footerNav, logoPublicPath = null } = Astro.props;
+const {
+  siteTitle,
+  primaryNav,
+  footerNav,
+  logoPublicPath = null,
+  integrations = null
+} = Astro.props;
 ---
 
 <div class="public-layout">
   <SiteHeader siteTitle={siteTitle} primaryNav={primaryNav} logoPublicPath={logoPublicPath} />
   <slot />
+  {integrations && <AdSenseSlot integrations={integrations} placement="siteFooter" />}
   <SiteFooter footerNav={footerNav} siteTitle={siteTitle} />
 </div>
 

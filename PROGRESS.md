@@ -9,9 +9,9 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | ---------------- | -------------------------------------------------- |
 | Project          | Astro Cloudflare Blog Template                     |
 | Roadmap          | `plan/feature-astro-cloudflare-blog-template-1.md` |
-| Current Phase    | Phase 14: Testing And QA                         |
+| Current Phase    | Phase 16: Google Integrations                    |
 | Overall Status   | In Development                                     |
-| Last Updated     | 2026-05-03                                         |
+| Last Updated     | 2026-05-05                                         |
 | MVP Target       | TBD                                                |
 | Current Blockers | None                                               |
 
@@ -37,6 +37,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | M13       | Update And Migration Strategy          | Completed   | Codex | 2026-05-03 | 2026-05-03 |
 | M14       | Testing And QA                         | Not Started | TBD   |            |            |
 | M15       | Documentation And Template Readiness   | Not Started | TBD   |            |            |
+| M16       | Google Integrations                    | Completed   | Codex | 2026-05-05 | 2026-05-05 |
 
 
 ## Active Tasks
@@ -471,6 +472,23 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | TASK-1515 | Not Started | Validate clean-account deployment.  |
 
 
+### M16: Google Integrations
+
+
+| Task      | Status    | Notes |
+| --------- | --------- | ----- |
+| TASK-1601 | Completed | Added integrations settings schema and disabled defaults. |
+| TASK-1602 | Completed | Added D1 migration for integrations defaults. |
+| TASK-1603 | Completed | Added protected integrations settings API. |
+| TASK-1604 | Completed | Added Google integrations admin settings UI. |
+| TASK-1605 | Completed | Analytics head tag renders only when enabled with a valid Measurement ID. |
+| TASK-1606 | Completed | AdSense loader renders for Auto/manual modes only when enabled with a valid Publisher ID. |
+| TASK-1607 | Completed | Added fixed manual AdSense placement slots. |
+| TASK-1608 | Completed | Added validation and rendering tests. |
+| TASK-1609 | Completed | Documented Google integrations and consent notes. |
+| TASK-1610 | Completed | Tests and TypeScript check passed; full Astro build is blocked in this environment by Node 20.18.2 requiring upgrade to >=22.12.0. |
+
+
 ## Decisions
 
 
@@ -485,6 +503,9 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | DEC-007 | Treat Pay Per Crawl as Cloudflare-level configuration.                      | 2026-05-03 | The app should document setup but not claim to perform crawler billing directly.           |
 | DEC-008 | Use `astro-cloudflare-blog-template` as the public repository/package name. | 2026-05-03 | Matches the plan recommendation and communicates the deploy target clearly.                |
 | DEC-009 | Use `pnpm` as the package manager.                                          | 2026-05-03 | Matches the plan recommendation and keeps dependency installs deterministic with Corepack. |
+| DEC-010 | Use direct Google tags for v1 Google integrations.                          | 2026-05-05 | Keeps Analytics and AdSense self-contained in CFblog settings without requiring Zaraz.     |
+| DEC-011 | Store Google IDs and booleans, not arbitrary script snippets.               | 2026-05-05 | Reduces script injection risk while still supporting operator-controlled integrations.     |
+| DEC-012 | Document consent responsibilities without a built-in consent banner in v1.  | 2026-05-05 | Consent requirements vary by site and region; advanced flows can use Zaraz/CMP tooling.    |
 
 
 ## Blockers
@@ -531,6 +552,9 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | RSS renders                            | Completed | `curl /rss.xml` returns D1-backed RSS. |
 | Robots.txt renders                     | Completed | `curl /robots.txt` returns D1-backed AI traffic policy and sitemap reference. |
 | AI crawler hint files render           | Completed | `curl /llms.txt`, `/llms-full.txt`, and `/crawlers.json` return D1-backed guidance. |
+| Google Analytics can be toggled        | Implemented | Admin settings persist Analytics enablement and Measurement ID validation. |
+| AdSense modes can be toggled           | Implemented | Admin settings persist Auto ads/manual placement mode and fixed slot IDs. |
+| Disabled Google scripts stay absent    | Implemented | Render helpers return no Google tags unless services are enabled with valid IDs. |
 | Deploy button works from clean account | Not Started |       |
 | Update documentation is complete       | Completed | `UPGRADING.md`, `CHANGELOG.md`, `/admin/update`, and update-check endpoint added. |
 
@@ -551,6 +575,9 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | Theme settings affect the public site.                                             | Implemented |
 | Sitemap, RSS, robots, canonical URLs, and Open Graph metadata work.                | Completed |
 | AI Crawl Control support is documented honestly as Cloudflare-level configuration. | Completed |
+| Google Analytics can be enabled/disabled from admin settings.                    | Implemented |
+| AdSense Auto ads and manual placements can be enabled/disabled from admin settings. | Implemented |
+| No Google scripts render unless explicitly enabled with valid IDs.               | Implemented |
 | Update and migration documentation exists.                                         | Completed |
 | CI validates build and core tests.                                                 | Not Started |
 
@@ -580,3 +607,4 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | 2026-05-03 | Codex | Completed Phase 12 AI traffic management: D1-backed `aiTraffic` settings, admin settings form/API, dynamic `robots.txt`, optional `llms.txt`, `llms-full.txt`, `crawlers.json`, official Cloudflare-facing docs, migration 0003, and render-helper tests. |
 | 2026-05-03 | Codex | Completed Phase 13 update strategy: `TEMPLATE_VERSION`/`SCHEMA_VERSION`, migration 0004, protected `/admin/update`, optional `/api/admin/update-check`, changelog, upgrading guide, compatibility tables, and local migration/version verification. |
 | 2026-05-03 | Codex | Reviewed completed Milestones 1-13 and remediated gaps: scheduled posts now publish after `scheduled_at`, category robots directives are stored/rendered, post/default OG image metadata is wired, media metadata search was added, plan-compatible docs aliases were added, schema advanced to 0005, and validations were rerun. |
+| 2026-05-05 | Codex | Completed Phase 16 Google integrations: D1-backed settings, admin API/UI, public Analytics and AdSense rendering, fixed manual ad placements, migration 0006, documentation, and tests. |

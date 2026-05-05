@@ -1,5 +1,7 @@
 ---
 import { env } from "cloudflare:workers";
+import AdSenseSlot from "../components/site/AdSenseSlot.astro";
+import IntegrationsHead from "../components/site/IntegrationsHead.astro";
 import PublicLayout from "../components/site/PublicLayout.astro";
 import ThemeHead from "../components/site/ThemeHead.astro";
 import { getCategoryAncestors, getCategoryByFullPath } from "../lib/db/categories";
@@ -12,6 +14,8 @@ import {
 import { getRedirectByFromPath } from "../lib/db/redirects";
 import { getMediaAssetById } from "../lib/db/media";
 import { getSetting } from "../lib/db/settings";
+import { loadIntegrationsSettings } from "../lib/integrations/load";
+import { shouldRenderAdSenseSlot } from "../lib/integrations/render";
 import { loadPublicNavigation } from "../lib/menus/public-navigation";
 import { loadTheme } from "../lib/theme/load";
 import { renderMarkdown } from "../lib/markdown/render";
@@ -65,7 +69,10 @@ const site =
     authorName: "CFblog"
   };
 
-const theme = await loadTheme(runtimeEnv.CFBLOG_DB);
+const [theme, integrations] = await Promise.all([
+  loadTheme(runtimeEnv.CFBLOG_DB),
+  loadIntegrationsSettings(runtimeEnv.CFBLOG_DB)
+]);
 
 let page: PageModel | null = null;
 const post = await getPublishedPostByFullPath(runtimeEnv.CFBLOG_DB, requestedPath);
@@ -173,6 +180,10 @@ const ogImageUrl = ogImage
   : null;
 const postDisplayDate =
   page.kind === "post" ? (page.post.published_at ?? page.post.scheduled_at) : null;
+const showCategoryAd = shouldRenderAdSenseSlot(
+  integrations,
+  "categoryAfterFirstPost"
+);
 
 const jsonLd =
   page.kind === "post"
@@ -207,6 +218,7 @@ const jsonLd =
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <ThemeHead theme={theme} />
+    <IntegrationsHead integrations={integrations} />
     <meta name="description" content={description} />
     {robotsDirective && <meta name="robots" content={robotsDirective} />}
     <link rel="canonical" href={canonicalUrl} />
@@ -249,6 +261,7 @@ const jsonLd =
       primaryNav={nav.primary}
       footerNav={nav.footer}
       logoPublicPath={theme.logoPublicPath}
+      integrations={integrations}
     >
       <main class="shell">
         <nav class="breadcrumbs" aria-label="Breadcrumbs">
@@ -280,7 +293,9 @@ const jsonLd =
                   </time>
                 )}
               </header>
+              <AdSenseSlot integrations={integrations} placement="postTop" />
               <div class="content" set:html={page.html} />
+              <AdSenseSlot integrations={integrations} placement="postAfterContent" />
             </article>
           ) : (
             <section class="category">
@@ -291,11 +306,21 @@ const jsonLd =
               </header>
               {page.posts.length > 0 ? (
                 <ol>
-                  {page.posts.map((post) => (
-                    <li>
-                      <a href={post.full_path}>{post.title}</a>
-                      {post.excerpt && <p>{post.excerpt}</p>}
-                    </li>
+                  {page.posts.map((post, index) => (
+                    <>
+                      <li>
+                        <a href={post.full_path}>{post.title}</a>
+                        {post.excerpt && <p>{post.excerpt}</p>}
+                      </li>
+                      {index === 0 && showCategoryAd && (
+                        <li class="ad-list-item">
+                          <AdSenseSlot
+                            integrations={integrations}
+                            placement="categoryAfterFirstPost"
+                          />
+                        </li>
+                      )}
+                    </>
                   ))}
                 </ol>
               ) : (
@@ -453,6 +478,10 @@ const jsonLd =
   li {
     border-top: 1px solid var(--cf-border);
     padding: 22px 0;
+  }
+
+  .ad-list-item {
+    list-style: none;
   }
 
   .category a {

@@ -1,0 +1,28 @@
+---
+import { renderAdSenseSlotHtml } from "../../lib/integrations/render";
+import type {
+  AdSensePlacementKey,
+  IntegrationsSettings
+} from "../../lib/integrations/schema";
+
+interface Props {
+  integrations: IntegrationsSettings;
+  placement: AdSensePlacementKey;
+}
+
+const { integrations, placement } = Astro.props;
+const slotHtml = renderAdSenseSlotHtml(integrations, placement);
+---
+
+{slotHtml ? <Fragment set:html={slotHtml} /> : null}
+
+<style is:global>
+  .cf-ad-slot {
+    margin: 28px 0;
+    min-height: 90px;
+  }
+
+  .cf-ad-slot .adsbygoogle {
+    min-height: 90px;
+  }
+</style>

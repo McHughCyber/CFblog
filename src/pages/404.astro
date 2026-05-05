@@ -1,8 +1,10 @@
 ---
 import { env } from "cloudflare:workers";
+import IntegrationsHead from "../components/site/IntegrationsHead.astro";
 import PublicLayout from "../components/site/PublicLayout.astro";
 import ThemeHead from "../components/site/ThemeHead.astro";
 import { getSetting } from "../lib/db/settings";
+import { loadIntegrationsSettings } from "../lib/integrations/load";
 import { loadPublicNavigation } from "../lib/menus/public-navigation";
 import { loadTheme } from "../lib/theme/load";
 
@@ -13,7 +15,10 @@ interface RuntimeEnv {
 }
 
 const runtimeEnv = env as RuntimeEnv;
-const theme = await loadTheme(runtimeEnv.CFBLOG_DB);
+const [theme, integrations] = await Promise.all([
+  loadTheme(runtimeEnv.CFBLOG_DB),
+  loadIntegrationsSettings(runtimeEnv.CFBLOG_DB)
+]);
 const site = await getSetting<{ title: string }>(runtimeEnv.CFBLOG_DB, "site");
 const nav = await loadPublicNavigation(runtimeEnv.CFBLOG_DB);
 const siteTitle = site?.title ?? "CFblog";
@@ -25,6 +30,7 @@ const requestedPath = Astro.originPathname;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <ThemeHead theme={theme} />
+    <IntegrationsHead integrations={integrations} includeAdSense={false} />
     <meta name="robots" content="noindex" />
     <title>Not Found | {siteTitle}</title>
   </head>

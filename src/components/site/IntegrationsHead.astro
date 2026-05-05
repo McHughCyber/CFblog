@@ -1,0 +1,21 @@
+---
+import {
+  renderAdSenseLoaderHtml,
+  renderGoogleAnalyticsHtml
+} from "../../lib/integrations/render";
+import type { IntegrationsSettings } from "../../lib/integrations/schema";
+
+interface Props {
+  integrations: IntegrationsSettings;
+  includeAdSense?: boolean;
+}
+
+const { integrations, includeAdSense = true } = Astro.props;
+const googleAnalyticsHtml = renderGoogleAnalyticsHtml(integrations);
+const adSenseLoaderHtml = includeAdSense
+  ? renderAdSenseLoaderHtml(integrations)
+  : "";
+---
+
+{googleAnalyticsHtml ? <Fragment set:html={googleAnalyticsHtml} /> : null}
+{adSenseLoaderHtml ? <Fragment set:html={adSenseLoaderHtml} /> : null}

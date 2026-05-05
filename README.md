@@ -67,6 +67,10 @@ Admin routes and admin API routes are protected by Cloudflare Access JWT validat
 
 CFblog serves `/robots.txt`, `/llms.txt`, `/llms-full.txt`, and `/crawlers.json` from D1-backed settings. Configure crawler-facing descriptions and robots policy from `/admin/settings`. Cloudflare AI Crawl Control and Pay Per Crawl enforcement still happens in the Cloudflare dashboard; see [AI crawler management](docs/ai-crawlers.md).
 
+## Google Integrations
+
+Google Analytics and Google AdSense are optional and disabled by default. Configure them from `/admin/settings` with Google IDs rather than pasted scripts. See [Google integrations](docs/google-integrations.md) for setup, manual AdSense placements, and privacy/consent notes.
+
 ## Updates
 
 CFblog updates are Git-based: pull template changes, test them, apply D1 migrations, and deploy the Worker. The admin panel includes `/admin/update` for installed template/schema visibility and an optional read-only update check. See [UPGRADING.md](UPGRADING.md) and [CHANGELOG.md](CHANGELOG.md).
