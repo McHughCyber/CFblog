@@ -166,31 +166,34 @@ const { nodes, nested = false, level = 0, mode = "primary" } = Astro.props;
           { passive: true }
         );
 
-        const openTimers = new WeakMap();
-        const closeTimers = new WeakMap();
+        const openTimers = new WeakMap<HTMLElement, number>();
+        const closeTimers = new WeakMap<HTMLElement, number>();
 
-        const clearTimer = (timerMap, item) => {
+        const clearTimer = (
+          timerMap: WeakMap<HTMLElement, number>,
+          item: HTMLElement
+        ): void => {
           const timer = timerMap.get(item);
-          if (timer) {
+          if (timer !== undefined) {
             window.clearTimeout(timer);
             timerMap.delete(item);
           }
         };
 
-        const closeDescendants = (item) => {
-          item.querySelectorAll(":scope .nav-item.is-open").forEach((openItem) => {
+        const closeDescendants = (item: HTMLElement): void => {
+          item.querySelectorAll(":scope .nav-item.is-open").forEach((openItem: Element) => {
             if (openItem instanceof HTMLElement) {
               openItem.classList.remove("is-open");
             }
           });
         };
 
-        const closeSiblings = (item) => {
+        const closeSiblings = (item: HTMLElement): void => {
           const parent = item.parentElement;
           if (!parent) {
             return;
           }
-          parent.querySelectorAll(":scope > .nav-item.is-open").forEach((openItem) => {
+          parent.querySelectorAll(":scope > .nav-item.is-open").forEach((openItem: Element) => {
             if (openItem !== item && openItem instanceof HTMLElement) {
               openItem.classList.remove("is-open");
               closeDescendants(openItem);
@@ -200,7 +203,7 @@ const { nodes, nested = false, level = 0, mode = "primary" } = Astro.props;
           });
         };
 
-        const isPointerMovingToSubmenu = (item) => {
+        const isPointerMovingToSubmenu = (item: HTMLElement): boolean => {
           const submenu = item.querySelector(":scope > .nav-list.nested");
           if (!(submenu instanceof HTMLElement)) {
             return false;
