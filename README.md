@@ -38,6 +38,8 @@ The MVP target is a working `*.workers.dev` deployment with custom-domain compat
 
 ## Local Development
 
+Use Node.js `>=22.12.0`; the repo includes `.nvmrc` for version managers that support it.
+
 Install dependencies with pnpm:
 
 ```sh

@@ -9,11 +9,11 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | ---------------- | -------------------------------------------------- |
 | Project          | Astro Cloudflare Blog Template                     |
 | Roadmap          | `plan/feature-astro-cloudflare-blog-template-1.md` |
-| Current Phase    | Phase 16: Google Integrations                    |
+| Current Phase    | Phase 14: Testing And QA                         |
 | Overall Status   | In Development                                     |
 | Last Updated     | 2026-05-05                                         |
 | MVP Target       | TBD                                                |
-| Current Blockers | None                                               |
+| Current Blockers | Local shell Node 20.18.2 cannot run Astro build; use Node >=22.12.0. |
 
 
 ## Milestone Progress
@@ -35,7 +35,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | M11       | Theme Customization                    | Completed   | Codex | 2026-05-03 | 2026-05-03 |
 | M12       | AI Traffic Management Support          | Completed   | Codex | 2026-05-03 | 2026-05-03 |
 | M13       | Update And Migration Strategy          | Completed   | Codex | 2026-05-03 | 2026-05-03 |
-| M14       | Testing And QA                         | Not Started | TBD   |            |            |
+| M14       | Testing And QA                         | In Development | Codex | 2026-05-05 |            |
 | M15       | Documentation And Template Readiness   | Not Started | TBD   |            |            |
 | M16       | Google Integrations                    | Completed   | Codex | 2026-05-05 | 2026-05-05 |
 
@@ -434,10 +434,10 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 
 | Task      | Status      | Notes                                   |
 | --------- | ----------- | --------------------------------------- |
-| TASK-1401 | Not Started | Test slug generation.                   |
-| TASK-1402 | Not Started | Test full path generation.              |
+| TASK-1401 | Completed | Added slug derivation and validation edge-case coverage. |
+| TASK-1402 | Completed | Added category/post full-path edge-case coverage. |
 | TASK-1403 | Not Started | Test category nesting validation.       |
-| TASK-1404 | Not Started | Test redirect creation.                 |
+| TASK-1404 | Completed | Added post and category path-change redirect creation tests. |
 | TASK-1405 | Not Started | Test Markdown sanitization.             |
 | TASK-1406 | Not Started | Test post CRUD APIs.                    |
 | TASK-1407 | Not Started | Test category CRUD APIs.                |
@@ -447,7 +447,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | TASK-1411 | Not Started | Test publish and public rendering flow. |
 | TASK-1412 | Not Started | Test mobile admin layout.               |
 | TASK-1413 | Not Started | Validate sitemap and RSS.               |
-| TASK-1414 | Not Started | Add build validation in CI.             |
+| TASK-1414 | Completed | Added GitHub Actions CI to install with pnpm, run tests, and build on Node 22. |
 
 
 ### M15: Documentation And Template Readiness
@@ -534,7 +534,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 
 | Check                                  | Status      | Notes |
 | -------------------------------------- | ----------- | ----- |
-| Local build succeeds                   | Completed        | `corepack pnpm build` succeeds. |
+| Local build succeeds                   | Blocked In Current Environment | Current shell uses Node 20.18.2; Astro requires Node >=22.12.0. CI is configured to build with Node 22. |
 | Worker deploy succeeds                 | Dry Run Complete | `corepack pnpm exec wrangler deploy --dry-run` succeeds; real deploy awaits real binding IDs/account resources. |
 | D1 migrations apply locally            | Completed        | `corepack pnpm exec wrangler d1 migrations apply CFBLOG_DB --local` applied through 0005 locally. |
 | D1 migrations apply remotely           | Not Started |       |
@@ -579,7 +579,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | AdSense Auto ads and manual placements can be enabled/disabled from admin settings. | Implemented |
 | No Google scripts render unless explicitly enabled with valid IDs.               | Implemented |
 | Update and migration documentation exists.                                         | Completed |
-| CI validates build and core tests.                                                 | Not Started |
+| CI validates build and core tests.                                                 | Completed |
 
 
 ## Activity Log
@@ -608,3 +608,4 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | 2026-05-03 | Codex | Completed Phase 13 update strategy: `TEMPLATE_VERSION`/`SCHEMA_VERSION`, migration 0004, protected `/admin/update`, optional `/api/admin/update-check`, changelog, upgrading guide, compatibility tables, and local migration/version verification. |
 | 2026-05-03 | Codex | Reviewed completed Milestones 1-13 and remediated gaps: scheduled posts now publish after `scheduled_at`, category robots directives are stored/rendered, post/default OG image metadata is wired, media metadata search was added, plan-compatible docs aliases were added, schema advanced to 0005, and validations were rerun. |
 | 2026-05-05 | Codex | Completed Phase 16 Google integrations: D1-backed settings, admin API/UI, public Analytics and AdSense rendering, fixed manual ad placements, migration 0006, documentation, and tests. |
+| 2026-05-05 | Codex | Added GitHub Actions CI for pnpm tests and build on Node 22, plus repo-level Node version hints. |
