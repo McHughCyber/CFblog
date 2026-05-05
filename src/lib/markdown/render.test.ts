@@ -26,4 +26,35 @@ describe("renderMarkdown", () => {
     expect(html).toContain('src="/media/aaaaaaaa-bbbb-4ccc-dddd-eeeeeeeeeeee"');
     expect(html).toContain('loading="lazy"');
   });
+
+  it("removes event handlers and disallowed embeds", async () => {
+    const html = await renderMarkdown(
+      [
+        '<img src="/media/aaaaaaaa-bbbb-4ccc-dddd-eeeeeeeeeeee" alt="Hero" onerror="alert(1)">',
+        '<iframe src="https://example.com/embed"></iframe>',
+        '<p onclick="alert(1)">Clickable</p>'
+      ].join("\n")
+    );
+
+    expect(html).toContain('src="/media/aaaaaaaa-bbbb-4ccc-dddd-eeeeeeeeeeee"');
+    expect(html).toContain('alt="Hero"');
+    expect(html).not.toContain("onerror");
+    expect(html).not.toContain("<iframe");
+    expect(html).not.toContain("onclick");
+  });
+
+  it("allows http, https, and mailto links while stripping unsafe schemes", async () => {
+    const html = await renderMarkdown(
+      [
+        "[Web](https://example.com)",
+        "[Email](mailto:editor@example.com)",
+        "[Bad](data:text/html,<script>alert(1)</script>)"
+      ].join("\n\n")
+    );
+
+    expect(html).toContain('href="https://example.com"');
+    expect(html).toContain('href="mailto:editor@example.com"');
+    expect(html).not.toContain("data:text/html");
+    expect(html).not.toContain("<script>");
+  });
 });

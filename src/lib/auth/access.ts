@@ -120,10 +120,15 @@ export async function validateAccessRequest(
   const jwks =
     options.jwks ??
     createRemoteJWKSet(new URL(`${teamDomain}/cdn-cgi/access/certs`));
-  const { payload } = await jwtVerify(token, jwks, {
-    issuer: teamDomain,
-    audience: config.audience
-  });
+  let payload: JWTPayload;
+  try {
+    ({ payload } = await jwtVerify(token, jwks, {
+      issuer: teamDomain,
+      audience: config.audience
+    }));
+  } catch {
+    throw new AccessAuthError("Invalid Cloudflare Access JWT.");
+  }
 
   return {
     email:

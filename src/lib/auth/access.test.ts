@@ -216,4 +216,58 @@ describe("Cloudflare Access helpers", () => {
       )
     ).rejects.toThrow();
   });
+
+  it("rejects a malformed Access JWT", async () => {
+    const request = new Request("https://example.com/admin", {
+      headers: {
+        "Cf-Access-Jwt-Assertion": "not-a-jwt"
+      }
+    });
+
+    await expect(
+      validateAccessRequest(request, {
+        teamDomain: "https://example.cloudflareaccess.com",
+        audience: "audience"
+      })
+    ).rejects.toBeInstanceOf(AccessAuthError);
+  });
+
+  it("rejects a signed Access JWT with the wrong issuer", async () => {
+    const { privateKey, publicKey } = await generateKeyPair("RS256");
+    const publicJwk = await exportJWK(publicKey);
+    const jwks = createLocalJWKSet({
+      keys: [
+        {
+          ...publicJwk,
+          kid: "test-key",
+          alg: "RS256",
+          use: "sig"
+        }
+      ]
+    });
+    const token = await new SignJWT({
+      email: "admin@example.com"
+    })
+      .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+      .setIssuer("https://other.cloudflareaccess.com")
+      .setAudience("audience")
+      .setExpirationTime("5 minutes")
+      .sign(privateKey);
+    const request = new Request("https://example.com/admin", {
+      headers: {
+        "Cf-Access-Jwt-Assertion": token
+      }
+    });
+
+    await expect(
+      validateAccessRequest(
+        request,
+        {
+          teamDomain: "https://example.cloudflareaccess.com",
+          audience: "audience"
+        },
+        { jwks }
+      )
+    ).rejects.toThrow();
+  });
 });

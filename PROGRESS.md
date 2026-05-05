@@ -436,13 +436,13 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | --------- | ----------- | --------------------------------------- |
 | TASK-1401 | Completed | Added slug derivation and validation edge-case coverage. |
 | TASK-1402 | Completed | Added category/post full-path edge-case coverage. |
-| TASK-1403 | Not Started | Test category nesting validation.       |
+| TASK-1403 | Completed | Added category save validation tests for missing/self/circular parents and nested path cascade. |
 | TASK-1404 | Completed | Added post and category path-change redirect creation tests. |
-| TASK-1405 | Not Started | Test Markdown sanitization.             |
+| TASK-1405 | Completed | Expanded Markdown sanitizer tests for unsafe schemes, event handlers, embeds, and media image paths. |
 | TASK-1406 | Not Started | Test post CRUD APIs.                    |
 | TASK-1407 | Not Started | Test category CRUD APIs.                |
 | TASK-1408 | Not Started | Test media upload API with mocked R2.   |
-| TASK-1409 | Not Started | Test Access JWT rejection.              |
+| TASK-1409 | Completed | Added explicit malformed-token and wrong-issuer Access JWT rejection tests. |
 | TASK-1410 | Not Started | Test admin post creation in browser.    |
 | TASK-1411 | Not Started | Test publish and public rendering flow. |
 | TASK-1412 | Not Started | Test mobile admin layout.               |
