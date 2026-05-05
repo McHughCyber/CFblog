@@ -57,10 +57,49 @@ pnpm preview
 pnpm deploy
 pnpm db:migrations:apply
 pnpm db:migrations:apply:local
+pnpm db:migrations:list
+pnpm db:migrations:list:local
 pnpm test
 ```
 
 Wrangler can automatically provision the D1, R2, and KV bindings declared in `wrangler.jsonc`. For local-only D1 migrations, use `pnpm db:migrations:apply:local`; the default migration script targets the remote D1 database for deployment.
+
+Before opening local admin pages with `pnpm dev` or `pnpm preview`, apply local D1 migrations once:
+
+```sh
+corepack pnpm db:migrations:apply:local
+```
+
+If a local page crashes with a D1 missing-table error from `.vite` or `src/lib/db/client.ts`, check pending local migrations:
+
+```sh
+corepack pnpm db:migrations:list:local
+```
+
+## Fresh Cloudflare Deployment
+
+When using the Deploy to Cloudflare button, keep the generated deploy command set to the package script:
+
+```sh
+pnpm deploy
+```
+
+That script applies the remote D1 migrations before deploying the Worker:
+
+```sh
+pnpm run db:migrations:apply
+wrangler deploy
+```
+
+If a fresh deployment returns `D1_ERROR: no such table: settings`, the Worker is bound to a D1 database that has not received the migrations yet. Run the remote migration script against the same Cloudflare project, then redeploy:
+
+```sh
+corepack pnpm install
+corepack pnpm db:migrations:apply
+corepack pnpm exec wrangler deploy
+```
+
+The first migration creates the `settings` table; the second migration seeds the default site settings and welcome post.
 
 ## Admin Protection
 

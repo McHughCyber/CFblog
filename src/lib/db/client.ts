@@ -7,6 +7,16 @@ export class DatabaseBindingError extends Error {
   }
 }
 
+export class D1QueryError extends Error {
+  cause: unknown;
+
+  constructor(query: string, cause: unknown) {
+    super(`D1 query failed: ${formatQueryForError(query)}`);
+    this.name = "D1QueryError";
+    this.cause = cause;
+  }
+}
+
 export function getDatabase(database: D1Database | undefined): D1Database {
   if (!database) {
     throw new DatabaseBindingError();
@@ -15,15 +25,23 @@ export function getDatabase(database: D1Database | undefined): D1Database {
   return database;
 }
 
+function formatQueryForError(query: string): string {
+  return query.trim().replace(/\s+/g, " ");
+}
+
 export async function first<T>(
   database: D1Database,
   query: string,
   bindings: D1Value[] = []
 ): Promise<T | null> {
-  return database
-    .prepare(query)
-    .bind(...bindings)
-    .first<T>();
+  try {
+    return await database
+      .prepare(query)
+      .bind(...bindings)
+      .first<T>();
+  } catch (error) {
+    throw new D1QueryError(query, error);
+  }
 }
 
 export async function all<T>(
@@ -31,12 +49,16 @@ export async function all<T>(
   query: string,
   bindings: D1Value[] = []
 ): Promise<T[]> {
-  const result = await database
-    .prepare(query)
-    .bind(...bindings)
-    .all<T>();
+  try {
+    const result = await database
+      .prepare(query)
+      .bind(...bindings)
+      .all<T>();
 
-  return result.results ?? [];
+    return result.results ?? [];
+  } catch (error) {
+    throw new D1QueryError(query, error);
+  }
 }
 
 export async function run(
@@ -44,8 +66,12 @@ export async function run(
   query: string,
   bindings: D1Value[] = []
 ): Promise<D1Result> {
-  return database
-    .prepare(query)
-    .bind(...bindings)
-    .run();
+  try {
+    return await database
+      .prepare(query)
+      .bind(...bindings)
+      .run();
+  } catch (error) {
+    throw new D1QueryError(query, error);
+  }
 }
