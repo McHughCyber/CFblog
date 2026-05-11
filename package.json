@@ -12,7 +12,7 @@
     "build": "astro check && astro build",
     "preview": "wrangler dev",
     "deploy": "pnpm run db:migrations:apply && wrangler deploy",
-    "db:migrations:apply": "wrangler d1 migrations apply CFBLOG_DB --remote --yes",
+    "db:migrations:apply": "wrangler d1 migrations apply CFBLOG_DB --remote",
     "db:migrations:apply:local": "wrangler d1 migrations apply CFBLOG_DB --local",
     "db:migrations:list": "wrangler d1 migrations list CFBLOG_DB --remote",
     "db:migrations:list:local": "wrangler d1 migrations list CFBLOG_DB --local",
