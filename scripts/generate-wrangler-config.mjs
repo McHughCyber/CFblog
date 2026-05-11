@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
+ * Advanced/manual multi-instance deploy helper.
  * Writes wrangler.generated.jsonc from wrangler.jsonc plus binding-related env vars.
- * Keeps worker/routing/schema settings in Git while D1/R2/KV identifiers stay per-deployer or per-instance.
+ * The primary Deploy to Cloudflare path uses wrangler.jsonc directly.
  */
 
 import fs from "node:fs";
@@ -42,7 +43,7 @@ for (const key of required) {
 	const v = process.env[key];
 	if (typeof v !== "string" || !v.trim()) {
 		console.error(
-			`generate-wrangler-config: missing ${key}. Set it in the shell, Workers Builds environment variables, or .env (not committed) before deploy.`
+			`generate-wrangler-config: missing ${key}. Set it in the shell, Workers Builds environment variables, or .env (not committed) before running an advanced configured deploy.`
 		);
 		process.exit(1);
 	}

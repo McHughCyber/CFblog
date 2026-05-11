@@ -1,6 +1,6 @@
 # Cloudflare Access Setup
 
-CFblog treats Cloudflare Access as the admin authentication perimeter. The app still validates the Access JWT inside the Worker before rendering `/admin/*` or `/api/admin/*`.
+CFblog treats Cloudflare Access as the admin authentication perimeter. Public routes can deploy and serve before Access is configured, but `/admin/*` and `/api/admin/*` intentionally fail closed until Access values are set. The app validates the Access JWT inside the Worker before rendering admin routes or APIs.
 
 ## Create the Access Application
 
@@ -21,7 +21,7 @@ CF_ACCESS_TEAM_DOMAIN=https://your-team.cloudflareaccess.com
 CF_ACCESS_AUD=your-access-application-audience-tag
 ```
 
-For production, store these as Worker environment variables or CI/CD secrets. Do not hard-code Access values into source files.
+For production, store these as Worker secrets or CI/CD secrets. Do not hard-code Access values into source files. A `403` from `/admin` before these values are configured is expected; public blog routes remain available.
 
 ## Runtime Validation
 

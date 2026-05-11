@@ -10,3 +10,13 @@ CFBLOG_CACHE_ENABLED=false
 # Optional update status endpoint. Serve either plain text like "0.1.1" or
 # JSON like {"version":"0.1.1","releaseUrl":"https://example.com/releases/0.1.1"}.
 CFBLOG_UPDATE_CHECK_URL=
+
+# Advanced configured deploy only. The primary `pnpm deploy` path uses
+# wrangler.jsonc directly and does not require these values.
+# CFBLOG_D1_DATABASE_NAME=my-blog-db
+# CFBLOG_D1_DATABASE_ID=00000000-0000-0000-0000-000000000000
+# CFBLOG_R2_BUCKET_NAME=my-blog-media
+# CFBLOG_KV_NAMESPACE_ID=
+# CFBLOG_WORKER_NAME=cfblog-my-instance
+# CFBLOG_SITE_URL=https://cfblog-my-instance.subdomain.workers.dev
+# CFBLOG_ENVIRONMENT=production

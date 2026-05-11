@@ -22,9 +22,8 @@ CFblog updates are intentionally Git-based. The app can show version status, but
 6. Apply new migrations to a local or preview D1 database.
 7. Run a Worker dry run.
 8. Deploy to a preview Worker or staging environment.
-9. Apply remote D1 migrations for production.
-10. Deploy the production Worker.
-11. Open `/admin/update` and confirm the installed schema and migration list.
+9. Deploy the production Worker and apply remote D1 migrations with `pnpm deploy`.
+10. Open `/admin/update` and confirm the installed schema and migration list.
 
 ## Git Update Flow
 
@@ -55,17 +54,25 @@ Apply migrations locally first:
 corepack pnpm exec wrangler d1 migrations apply CFBLOG_DB --local
 ```
 
-For production, use Wrangler’s remote migration mode after backups and preview validation. Ensure Workers Builds (or your shell) defines `CFBLOG_D1_DATABASE_NAME`, `CFBLOG_D1_DATABASE_ID`, and `CFBLOG_R2_BUCKET_NAME`, then either:
+For production, deploy after backups and preview validation:
 
 ```sh
+corepack pnpm deploy
+```
+
+The default deploy uses the D1/R2 bindings in `wrangler.jsonc`; it does not require `CFBLOG_D1_DATABASE_NAME`, `CFBLOG_D1_DATABASE_ID`, or `CFBLOG_R2_BUCKET_NAME`. It publishes the Worker first so Cloudflare can link the D1 resource, then applies remote migrations before the command completes.
+
+For an already provisioned deployment, you can list or apply remote migrations directly:
+
+```sh
+corepack pnpm db:migrations:list
 corepack pnpm db:migrations:apply
 ```
 
-Or invoke Wrangler explicitly:
+For advanced configured deployments with pre-provisioned resources or multiple independent stacks, ensure Workers Builds or your shell defines `CFBLOG_D1_DATABASE_NAME`, `CFBLOG_D1_DATABASE_ID`, and `CFBLOG_R2_BUCKET_NAME`, then run:
 
 ```sh
-corepack pnpm wrangler:config
-corepack pnpm exec wrangler d1 migrations apply CFBLOG_DB --remote --config wrangler.generated.jsonc
+corepack pnpm deploy:configured
 ```
 
 The app also records its schema marker in D1 settings. If Wrangler reports no pending migration but `/admin/update` shows a pending app-level migration, inspect `schema_migrations` before deploying further changes.
@@ -74,7 +81,8 @@ The app also records its schema marker in D1 settings. If Wrangler reports no pe
 
 - Export or copy production D1 before applying remote migrations.
 - Keep R2 object keys stable; migrations should not rename media objects without an explicit rollback plan.
-- Run `corepack pnpm wrangler:config` then `corepack pnpm exec wrangler deploy --dry-run --config wrangler.generated.jsonc` before deploying.
+- Run `corepack pnpm exec wrangler deploy --dry-run` before deploying.
+- For advanced configured deployments, run `corepack pnpm wrangler:config` then `corepack pnpm exec wrangler deploy --dry-run --config wrangler.generated.jsonc`.
 - Use a staging Worker and preview D1 database for risky changes.
 - Confirm `/sitemap.xml`, `/rss.xml`, `/robots.txt`, `/llms.txt`, and one published post after the preview deploy.
 
