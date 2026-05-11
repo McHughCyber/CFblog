@@ -11,10 +11,11 @@
     "dev": "astro dev",
     "build": "astro check && astro build",
     "preview": "wrangler dev",
-    "deploy": "pnpm run db:migrations:apply && wrangler deploy",
-    "db:migrations:apply": "wrangler d1 migrations apply CFBLOG_DB --remote",
+    "wrangler:config": "node scripts/generate-wrangler-config.mjs",
+    "deploy": "pnpm run db:migrations:apply && wrangler deploy --config wrangler.generated.jsonc",
+    "db:migrations:apply": "pnpm run wrangler:config && wrangler d1 migrations apply CFBLOG_DB --remote --config wrangler.generated.jsonc",
     "db:migrations:apply:local": "wrangler d1 migrations apply CFBLOG_DB --local",
-    "db:migrations:list": "wrangler d1 migrations list CFBLOG_DB --remote",
+    "db:migrations:list": "pnpm run wrangler:config && wrangler d1 migrations list CFBLOG_DB --remote --config wrangler.generated.jsonc",
     "db:migrations:list:local": "wrangler d1 migrations list CFBLOG_DB --local",
     "test": "vitest run --passWithNoTests"
   },
@@ -29,6 +30,7 @@
     "@astrojs/check": "^0.9.9",
     "@cloudflare/workers-types": "latest",
     "@types/sanitize-html": "^2.16.1",
+    "jsonc-parser": "3.3.1",
     "typescript": "^5.9.3",
     "vitest": "latest",
     "wrangler": "latest"
@@ -37,21 +39,21 @@
     "bindings": {
       "CFBLOG_DB": {
         "type": "d1",
-        "description": "Canonical D1 database for posts, categories, menus, media metadata, redirects, settings, revisions, and schema versions."
+        "description": "Canonical D1 database for posts, categories, menus, media metadata, redirects, settings, revisions, and schema versions. Set CFBLOG_D1_DATABASE_NAME and CFBLOG_D1_DATABASE_ID for remote deploy (Workers Builds or shell)."
       },
       "CFBLOG_MEDIA": {
         "type": "r2",
-        "description": "R2 bucket for uploaded images and attachments."
+        "description": "R2 bucket for uploaded images and attachments. Set CFBLOG_R2_BUCKET_NAME for remote deploy."
       },
       "CFBLOG_CACHE": {
         "type": "kv",
-        "description": "Optional low-risk cache namespace. Canonical content must stay in D1 and R2."
+        "description": "Optional low-risk cache namespace. Canonical content must stay in D1 and R2. Set CFBLOG_KV_NAMESPACE_ID to bind KV; omit it to deploy without KV."
       },
       "SITE_URL": {
-        "description": "Set this to the deployed site origin, such as `https://your-worker.your-subdomain.workers.dev` or your custom domain. CFblog uses it for canonical URLs, feeds, sitemaps, and admin mutation origin checks."
+        "description": "Deployed site origin for canonical URLs, feeds, sitemap output, and admin mutation checks. Override per deploy with Workers Builds env `CFBLOG_SITE_URL`, or edit `vars.SITE_URL` in `wrangler.jsonc` as a default."
       },
       "ENVIRONMENT": {
-        "description": "Use `production` for the primary deployed Worker. Local development can use `development` from `.dev.vars`."
+        "description": "Runtime environment label. Override per deploy with Workers Builds env `CFBLOG_ENVIRONMENT`, or edit `vars.ENVIRONMENT` in `wrangler.jsonc`."
       },
       "CF_ACCESS_TEAM_DOMAIN": {
         "description": "Cloudflare Access team domain for admin authentication, for example `https://your-team.cloudflareaccess.com`."

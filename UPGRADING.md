@@ -55,10 +55,17 @@ Apply migrations locally first:
 corepack pnpm exec wrangler d1 migrations apply CFBLOG_DB --local
 ```
 
-For production, use Wrangler’s remote migration mode after backups and preview validation:
+For production, use Wrangler’s remote migration mode after backups and preview validation. Ensure Workers Builds (or your shell) defines `CFBLOG_D1_DATABASE_NAME`, `CFBLOG_D1_DATABASE_ID`, and `CFBLOG_R2_BUCKET_NAME`, then either:
 
 ```sh
-corepack pnpm exec wrangler d1 migrations apply CFBLOG_DB --remote
+corepack pnpm db:migrations:apply
+```
+
+Or invoke Wrangler explicitly:
+
+```sh
+corepack pnpm wrangler:config
+corepack pnpm exec wrangler d1 migrations apply CFBLOG_DB --remote --config wrangler.generated.jsonc
 ```
 
 The app also records its schema marker in D1 settings. If Wrangler reports no pending migration but `/admin/update` shows a pending app-level migration, inspect `schema_migrations` before deploying further changes.
@@ -67,7 +74,7 @@ The app also records its schema marker in D1 settings. If Wrangler reports no pe
 
 - Export or copy production D1 before applying remote migrations.
 - Keep R2 object keys stable; migrations should not rename media objects without an explicit rollback plan.
-- Run `corepack pnpm exec wrangler deploy --dry-run` before deploying.
+- Run `corepack pnpm wrangler:config` then `corepack pnpm exec wrangler deploy --dry-run --config wrangler.generated.jsonc` before deploying.
 - Use a staging Worker and preview D1 database for risky changes.
 - Confirm `/sitemap.xml`, `/rss.xml`, `/robots.txt`, `/llms.txt`, and one published post after the preview deploy.
 

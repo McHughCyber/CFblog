@@ -12,3 +12,4 @@ dist/
 
 *.log
 wrangler-output-*.json
+wrangler.generated.jsonc

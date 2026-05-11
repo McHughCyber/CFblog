@@ -10,19 +10,13 @@
   "d1_databases": [
     {
       "binding": "CFBLOG_DB",
-      "database_name": "cfblog-db",
       "migrations_dir": "migrations"
     }
   ],
   "r2_buckets": [
     {
       "binding": "CFBLOG_MEDIA",
-      "bucket_name": "cfblog-media"
-    }
-  ],
-  "kv_namespaces": [
-    {
-      "binding": "CFBLOG_CACHE"
+      "bucket_name": "local-dev-placeholder-bucket"
     }
   ],
   "vars": {
