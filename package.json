@@ -46,6 +46,18 @@
       "CFBLOG_CACHE": {
         "type": "kv",
         "description": "Optional low-risk cache namespace. Canonical content must stay in D1 and R2."
+      },
+      "SITE_URL": {
+        "description": "Set this to the deployed site origin, such as `https://your-worker.your-subdomain.workers.dev` or your custom domain. CFblog uses it for canonical URLs, feeds, sitemaps, and admin mutation origin checks."
+      },
+      "ENVIRONMENT": {
+        "description": "Use `production` for the primary deployed Worker. Local development can use `development` from `.dev.vars`."
+      },
+      "CF_ACCESS_TEAM_DOMAIN": {
+        "description": "Cloudflare Access team domain for admin authentication, for example `https://your-team.cloudflareaccess.com`."
+      },
+      "CF_ACCESS_AUD": {
+        "description": "Cloudflare Access application audience tag for the admin Access application."
       }
     }
   }

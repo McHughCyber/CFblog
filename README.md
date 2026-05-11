@@ -2,7 +2,7 @@
 
 Reusable Astro blog template for deployment to Cloudflare Workers.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/your-github-user/astro-cloudflare-blog-template)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/McHughCyber/CFblog)
 
 ## MVP Scope
 
@@ -76,22 +76,54 @@ If a local page crashes with a D1 missing-table error from `.vite` or `src/lib/d
 corepack pnpm db:migrations:list:local
 ```
 
-## Fresh Cloudflare Deployment
+## Deployment
 
-When using the Deploy to Cloudflare button, keep the generated deploy command set to the package script:
+CFblog supports two deployment paths:
+
+- Primary: Deploy to Cloudflare button targeting Workers Builds.
+- Manual Workers: clone the repository, configure values, apply migrations, and run `pnpm deploy`.
+
+Cloudflare Pages is not a supported target for this template.
+
+### Primary: Deploy to Cloudflare
+
+Use the Deploy to Cloudflare button at the top of this README. The button opens:
+
+```text
+https://deploy.workers.cloudflare.com/?url=https://github.com/McHughCyber/CFblog
+```
+
+During setup, keep the generated deploy command set to the package script:
 
 ```sh
 pnpm deploy
 ```
 
-That script applies the remote D1 migrations before deploying the Worker:
+Cloudflare reads `wrangler.jsonc` during deployment and provisions the supported bindings declared there:
+
+- `CFBLOG_DB`: D1 database for content and settings.
+- `CFBLOG_MEDIA`: R2 bucket for uploaded media.
+- `CFBLOG_CACHE`: optional KV namespace for cache acceleration.
+
+Review these runtime values during or immediately after the first deployment:
+
+| Value | Required | Purpose |
+|---|---:|---|
+| `SITE_URL` | Yes | Public site origin used for canonical URLs, feeds, sitemap output, and admin mutation origin checks. Replace the committed placeholder with your `*.workers.dev` URL or custom domain. |
+| `ENVIRONMENT` | Yes | Runtime environment label. Use `production` for the primary deployment. |
+| `CF_ACCESS_TEAM_DOMAIN` | Required for admin | Cloudflare Access team domain, for example `https://your-team.cloudflareaccess.com`. |
+| `CF_ACCESS_AUD` | Required for admin | Cloudflare Access application audience tag for the admin application. |
+
+Admin routes fail closed until Cloudflare Access is configured and both Access values are set. Public blog routes, feeds, and crawler files remain available.
+
+The deploy script applies remote D1 migrations before deploying the Worker:
 
 ```sh
 pnpm run db:migrations:apply
 wrangler deploy
 ```
 
-If a fresh deployment returns `D1_ERROR: no such table: settings`, the Worker is bound to a D1 database that has not received the migrations yet. Run the remote migration script against the same Cloudflare project, then redeploy:
+If a fresh deployment returns `D1_ERROR: no such table: settings`, the Worker is bound to a D1 database that has not received the migrations yet. From the generated repository, run the remote migration script against the same Cloudflare project, then redeploy:
 
 ```sh
 corepack pnpm install
@@ -100,6 +132,38 @@ corepack pnpm exec wrangler deploy
 ```
 
 The first migration creates the `settings` table; the second migration seeds the default site settings and welcome post.
+
+### Manual Workers Deployment
+
+Clone the repository and install dependencies:
+
+```sh
+git clone https://github.com/McHughCyber/CFblog.git
+cd CFblog
+corepack enable
+corepack prepare pnpm@10.10.0 --activate
+corepack pnpm install
+```
+
+Authenticate Wrangler with a scoped Cloudflare API token:
+
+```sh
+corepack pnpm exec wrangler login
+```
+
+Configure `SITE_URL` and `ENVIRONMENT` in `wrangler.jsonc` or in the Cloudflare dashboard. Configure the Access values for admin protection as Worker secrets:
+
+```sh
+corepack pnpm exec wrangler secret put CF_ACCESS_TEAM_DOMAIN
+corepack pnpm exec wrangler secret put CF_ACCESS_AUD
+```
+
+Then apply remote migrations and deploy:
+
+```sh
+corepack pnpm db:migrations:apply
+corepack pnpm deploy
+```
 
 ## Admin Protection
 
