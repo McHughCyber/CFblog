@@ -33,7 +33,7 @@
     "@astrojs/check": "^0.9.9",
     "@cloudflare/workers-types": "latest",
     "@types/sanitize-html": "^2.16.1",
-    "fast-uri": ">=3.1.2",
+    "fast-uri": "3.1.2",
     "jsonc-parser": "3.3.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.5",
@@ -70,6 +70,12 @@
       },
       "CF_ACCESS_AUD": {
         "description": "Cloudflare Access application audience tag for the admin Access application."
+      },
+      "CFBLOG_UPDATE_CHECK_URL": {
+        "description": "Optional static HTTPS URL for read-only latest-version metadata shown in /admin/update."
+      },
+      "CFBLOG_UPDATE_WORKFLOW_URL": {
+        "description": "Optional GitHub Actions workflow URL shown as a link in /admin/update. CFblog does not trigger the workflow."
       }
     }
   }
