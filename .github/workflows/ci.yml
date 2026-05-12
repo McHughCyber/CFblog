@@ -53,6 +53,8 @@ jobs:
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CFBLOG_CLOUDFLARE_TOKEN }}
+      CFBLOG_ACCESS_CLIENT_ID: ${{ secrets.CFBLOG_ACCESS_CLIENT_ID }}
+      CFBLOG_ACCESS_CLIENT_SECRET: ${{ secrets.CFBLOG_ACCESS_CLIENT_SECRET }}
       CFBLOG_D1_DATABASE_ID: ${{ vars.CFBLOG_D1_DATABASE_ID }}
       CFBLOG_D1_DATABASE_NAME: ${{ vars.CFBLOG_D1_DATABASE_NAME }}
       CFBLOG_ENVIRONMENT: ${{ vars.CFBLOG_ENVIRONMENT }}
@@ -128,12 +130,16 @@ jobs:
 
           site_url="${CFBLOG_SITE_URL%/}"
           cache_buster="ci=${GITHUB_RUN_ID:-manual}-${GITHUB_RUN_ATTEMPT:-0}"
+          access_headers=(
+            --header "CF-Access-Client-Id: $CFBLOG_ACCESS_CLIENT_ID"
+            --header "CF-Access-Client-Secret: $CFBLOG_ACCESS_CLIENT_SECRET"
+          )
 
           for attempt in $(seq 1 30); do
             home_body="$(curl --fail --silent --show-error --header "Cache-Control: no-cache" "$site_url/?$cache_buster")"
             admin_status="$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" --header "Cache-Control: no-cache" "$site_url/admin?$cache_buster")"
 
-            if [ "$home_body" != "Hello World!" ] && [ "$admin_status" = "403" ]; then
+            if [ "$home_body" != "Hello World!" ] && { [ "$admin_status" = "302" ] || [ "$admin_status" = "403" ]; }; then
               break
             fi
 
@@ -155,8 +161,14 @@ jobs:
           curl --fail --silent --show-error --output /dev/null "$site_url/llms.txt?$cache_buster"
           curl --fail --silent --show-error --output /dev/null "$site_url/crawlers.json?$cache_buster"
 
-          admin_status="$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" "$site_url/admin?$cache_buster")"
-          if [ "$admin_status" != "403" ]; then
-            echo "Expected /admin to fail closed with 403, got $admin_status"
+          unauthenticated_admin_status="$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" "$site_url/admin?$cache_buster")"
+          if [ "$unauthenticated_admin_status" != "302" ] && [ "$unauthenticated_admin_status" != "403" ]; then
+            echo "Expected unauthenticated /admin to be protected with 302 or 403, got $unauthenticated_admin_status"
+            exit 1
+          fi
+
+          authenticated_admin_status="$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" "${access_headers[@]}" "$site_url/admin?$cache_buster")"
+          if [ "$authenticated_admin_status" != "200" ]; then
+            echo "Expected service-token authenticated /admin to return 200, got $authenticated_admin_status"
             exit 1
           fi
