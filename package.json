@@ -38,6 +38,11 @@
     "vitest": "latest",
     "wrangler": "^4.87.0"
   },
+  "pnpm": {
+    "overrides": {
+      "fast-uri": ">=3.1.2"
+    }
+  },
   "cloudflare": {
     "bindings": {
       "CFBLOG_DB": {
