@@ -5,8 +5,8 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  fast-uri: '>=3.1.2'
-  yaml: '>=2.8.3'
+  fast-uri: 3.1.2
+  yaml: ^2.8.3
 
 importers:
 
@@ -38,7 +38,7 @@ importers:
         specifier: ^2.16.1
         version: 2.16.1
       fast-uri:
-        specifier: '>=3.1.2'
+        specifier: 3.1.2
         version: 3.1.2
       jsonc-parser:
         specifier: 3.3.1
@@ -1955,7 +1955,7 @@ packages:
       sugarss: ^5.0.0
       terser: ^5.16.0
       tsx: ^4.8.1
-      yaml: '>=2.8.3'
+      yaml: ^2.8.3
     peerDependenciesMeta:
       '@types/node':
         optional: true
