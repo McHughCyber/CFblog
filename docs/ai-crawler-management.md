@@ -1,5 +1,3 @@
-# AI Crawler Management
+# AI crawler management (redirect)
 
-This file is kept as a compatibility alias for the milestone plan. The maintained guide is:
-
-- [ai-crawlers.md](ai-crawlers.md)
+The maintained guide is **[AI crawlers](ai-crawlers.md)**. This file remains for older links only.

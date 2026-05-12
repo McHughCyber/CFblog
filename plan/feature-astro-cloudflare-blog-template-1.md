@@ -646,8 +646,8 @@ Completion criteria:
 - **FILE-009**: `.dev.vars.example` documents required local environment variables.
 - **FILE-010**: `migrations/0001_initial_schema.sql` defines the initial D1 schema.
 - **FILE-011**: `migrations/0002_seed_defaults.sql` defines seed settings and content.
-- **FILE-012**: `docs/cloudflare-access.md` documents Access setup.
-- **FILE-013**: `docs/ai-crawler-management.md` documents AI Crawl Control and Pay Per Crawl setup.
+- **FILE-012**: `docs/security-and-access.md` documents Access setup; `docs/cloudflare-access.md` is a compatibility redirect.
+- **FILE-013**: `docs/ai-crawlers.md` documents AI crawlers; `docs/ai-crawler-management.md` is a compatibility redirect.
 - **FILE-014**: `docs/content-model.md` documents D1 content design.
 - **FILE-015**: `docs/updating-deployed-blogs.md` documents update strategy.
 - **FILE-016**: `docs/theme-customization.md` documents theme options.

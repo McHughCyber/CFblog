@@ -1,5 +1,7 @@
 # Google Integrations
 
+See also: [README](../README.md) (documentation map), [Admin guide](admin-guide.md), [Configuration reference](configuration-reference.md).
+
 CFblog can optionally render Google Analytics and Google AdSense tags on public
 blog pages. Both integrations are disabled by default and are configured from
 `/admin/settings`.

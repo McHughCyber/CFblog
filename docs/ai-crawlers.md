@@ -1,5 +1,7 @@
 # AI Crawler Management
 
+See also: [README](../README.md) (documentation map), [Admin guide](admin-guide.md), [Configuration reference](configuration-reference.md).
+
 CFblog includes public hint files for AI crawlers:
 
 - `/robots.txt` always includes the sitemap and can optionally disallow configured AI crawler user agents.

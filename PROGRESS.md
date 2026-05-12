@@ -99,7 +99,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | TASK-0409 | Add Open Graph metadata.                        | Completed   | Codex | Added Open Graph title, description, type, and URL.                              |
 | TASK-0410 | Add Twitter card metadata.                      | Completed   | Codex | Added summary-card metadata.                                                     |
 | TASK-0411 | Add pagination metadata.                        | Completed   | Codex | Added prev/next links for paginated homepage and category pages.                 |
-| TASK-0501 | Document Access setup.                          | Completed   | Codex | Added `docs/access-setup.md` and linked it from `README.md`.                     |
+| TASK-0501 | Document Access setup.                          | Completed   | Codex | Canonical: `docs/security-and-access.md`; `docs/access-setup.md` is a compatibility redirect. |
 | TASK-0502 | Add Access env vars.                            | Completed   | Codex | Access team domain and audience are represented in env examples/types.           |
 | TASK-0503 | Create JWT validation helper.                   | Completed   | Codex | Added `src/lib/auth/access.ts` using Cloudflare Access JWKS, issuer, and aud.    |
 | TASK-0504 | Protect admin pages.                            | Completed   | Codex | Middleware protects `/admin` and `/admin/*`.                                     |
@@ -263,7 +263,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 
 | Task      | Status      | Notes                         |
 | --------- | ----------- | ----------------------------- |
-| TASK-0501 | Completed   | Added `docs/access-setup.md` and linked it from `README.md`. |
+| TASK-0501 | Completed   | Access docs consolidated under `docs/security-and-access.md`. |
 | TASK-0502 | Completed   | Access team domain and audience are represented in env examples/types. |
 | TASK-0503 | Completed   | Added `src/lib/auth/access.ts` using JWKS, issuer, and audience validation. |
 | TASK-0504 | Completed   | Middleware protects `/admin` and `/admin/*`. |

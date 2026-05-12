@@ -1,5 +1,3 @@
-# Cloudflare Access Setup
+# Cloudflare Access (redirect)
 
-This file is kept as a compatibility alias for the milestone plan. The maintained setup guide is:
-
-- [access-setup.md](access-setup.md)
+The maintained guide is **[Security and Access](security-and-access.md)**. This file remains for older links only.

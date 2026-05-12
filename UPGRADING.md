@@ -1,5 +1,7 @@
 # Upgrading CFblog
 
+**Documentation map:** [README](README.md) lists all guides. Operator runbooks: [docs/operations.md](docs/operations.md). Security: [docs/security-and-access.md](docs/security-and-access.md).
+
 CFblog updates are intentionally Git-based. The app can show version status and link to a manual GitHub workflow, but it does not rewrite its own source code or store GitHub/Cloudflare write credentials.
 
 ## Version Model

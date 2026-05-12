@@ -1,5 +1,7 @@
 # Changelog
 
+**Documentation map:** [README](README.md) lists tutorials, how-tos, and reference docs.
+
 All notable CFblog template changes are tracked here.
 
 ## 0.1.0 - 2026-05-03
