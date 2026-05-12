@@ -84,6 +84,30 @@ jobs:
         run: |
           pnpm build
           pnpm wrangler:config
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+
+          const astroConfig = JSON.parse(
+            fs.readFileSync("dist/server/wrangler.json", "utf8")
+          );
+          const config = JSON.parse(
+            fs.readFileSync("wrangler.generated.jsonc", "utf8")
+          );
+
+          config.main = "dist/server/entry.mjs";
+          config.no_bundle = astroConfig.no_bundle;
+          config.rules = astroConfig.rules;
+          config.assets = {
+            ...config.assets,
+            directory: "dist/client"
+          };
+
+          fs.writeFileSync(
+            "wrangler.generated.jsonc",
+            `${JSON.stringify(config, null, 2)}\n`,
+            "utf8"
+          );
+          NODE
           pnpm wrangler d1 migrations apply CFBLOG_DB --remote --config wrangler.generated.jsonc
           pnpm wrangler deploy --config wrangler.generated.jsonc
 
