@@ -116,14 +116,35 @@ jobs:
           set -euo pipefail
 
           site_url="${CFBLOG_SITE_URL%/}"
+          cache_buster="ci=${GITHUB_RUN_ID:-manual}-${GITHUB_RUN_ATTEMPT:-0}"
 
-          curl --fail --silent --show-error "$site_url/"
-          curl --fail --silent --show-error "$site_url/robots.txt"
-          curl --fail --silent --show-error "$site_url/sitemap.xml"
-          curl --fail --silent --show-error "$site_url/llms.txt"
-          curl --fail --silent --show-error "$site_url/crawlers.json"
+          for attempt in $(seq 1 30); do
+            home_body="$(curl --fail --silent --show-error --header "Cache-Control: no-cache" "$site_url/?$cache_buster")"
+            admin_status="$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" --header "Cache-Control: no-cache" "$site_url/admin?$cache_buster")"
 
-          admin_status="$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" "$site_url/admin")"
+            if [ "$home_body" != "Hello World!" ] && [ "$admin_status" = "403" ]; then
+              break
+            fi
+
+            if [ "$attempt" = "30" ]; then
+              echo "Deployment did not converge to the expected CFblog responses."
+              echo "Home response snippet:"
+              printf '%s\n' "$home_body" | head -c 500
+              printf '\n/admin status: %s\n' "$admin_status"
+              exit 1
+            fi
+
+            echo "Waiting for deployed Worker to propagate, attempt $attempt/30..."
+            sleep 3
+          done
+
+          curl --fail --silent --show-error --output /dev/null "$site_url/?$cache_buster"
+          curl --fail --silent --show-error --output /dev/null "$site_url/robots.txt?$cache_buster"
+          curl --fail --silent --show-error --output /dev/null "$site_url/sitemap.xml?$cache_buster"
+          curl --fail --silent --show-error --output /dev/null "$site_url/llms.txt?$cache_buster"
+          curl --fail --silent --show-error --output /dev/null "$site_url/crawlers.json?$cache_buster"
+
+          admin_status="$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" "$site_url/admin?$cache_buster")"
           if [ "$admin_status" != "403" ]; then
             echo "Expected /admin to fail closed with 403, got $admin_status"
             exit 1
