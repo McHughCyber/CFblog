@@ -81,7 +81,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Deploy configured test stack
-        run: pnpm deploy:configured
+        run: |
+          pnpm build
+          pnpm wrangler:config
+          pnpm wrangler d1 migrations apply CFBLOG_DB --remote --config wrangler.generated.jsonc
+          pnpm wrangler deploy --config wrangler.generated.jsonc
 
       - name: Validate deployed public routes
         run: |
