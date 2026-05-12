@@ -56,6 +56,8 @@ jobs:
       CFBLOG_D1_DATABASE_ID: ${{ vars.CFBLOG_D1_DATABASE_ID }}
       CFBLOG_D1_DATABASE_NAME: ${{ vars.CFBLOG_D1_DATABASE_NAME }}
       CFBLOG_ENVIRONMENT: ${{ vars.CFBLOG_ENVIRONMENT }}
+      CFBLOG_AUD_TOKEN: ${{ vars.CFBLOG_AUD_TOKEN }}
+      CF_ACCESS_TEAM_DOMAIN: ${{ vars.CF_ACCESS_TEAM_DOMAIN }}
       CFBLOG_KV_NAMESPACE_ID: ${{ vars.CFBLOG_KV_NAMESPACE_ID }}
       CFBLOG_R2_BUCKET_NAME: ${{ vars.CFBLOG_R2_BUCKET_NAME }}
       CFBLOG_SITE_URL: ${{ vars.CFBLOG_SITE_URL }}
@@ -100,6 +102,15 @@ jobs:
           config.assets = {
             ...config.assets,
             directory: "dist/client"
+          };
+          config.vars = {
+            ...config.vars,
+            ...(process.env.CF_ACCESS_TEAM_DOMAIN
+              ? { CF_ACCESS_TEAM_DOMAIN: process.env.CF_ACCESS_TEAM_DOMAIN }
+              : {}),
+            ...(process.env.CFBLOG_AUD_TOKEN
+              ? { CF_ACCESS_AUD: process.env.CFBLOG_AUD_TOKEN }
+              : {})
           };
 
           fs.writeFileSync(
