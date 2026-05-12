@@ -8,8 +8,12 @@ CF_ACCESS_AUD=replace-with-access-application-audience
 CFBLOG_CACHE_ENABLED=false
 
 # Optional update status endpoint. Serve either plain text like "0.1.1" or
-# JSON like {"version":"0.1.1","releaseUrl":"https://example.com/releases/0.1.1"}.
+# JSON like {"version":"0.1.1","tag":"v0.1.1","schemaVersion":"0007_next_change","migrations":["0007_next_change"]}.
 CFBLOG_UPDATE_CHECK_URL=
+
+# Optional link shown on /admin/update. This is only a link to GitHub Actions;
+# CFblog does not trigger the workflow itself.
+CFBLOG_UPDATE_WORKFLOW_URL=
 
 # Advanced configured deploy only. The primary `pnpm deploy` path uses
 # wrangler.jsonc directly and does not require these values.

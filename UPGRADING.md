@@ -1,6 +1,6 @@
 # Upgrading CFblog
 
-CFblog updates are intentionally Git-based. The app can show version status, but it does not rewrite its own source code.
+CFblog updates are intentionally Git-based. The app can show version status and link to a manual GitHub workflow, but it does not rewrite its own source code or store GitHub/Cloudflare write credentials.
 
 ## Version Model
 
@@ -14,16 +14,31 @@ CFblog updates are intentionally Git-based. The app can show version status, but
 
 ## Safe Update Flow
 
-1. Create a branch for the update.
+1. Run the **Update CFblog from upstream** GitHub workflow, or create a branch manually.
 2. Back up the production D1 database.
 3. Back up important R2 objects or confirm bucket retention/versioning outside the app.
-4. Pull the upstream template changes into the branch.
-5. Install dependencies and run tests locally.
+4. Review the workflow-created update PR.
+5. Confirm dependencies install, tests pass, and the Worker builds.
 6. Apply new migrations to a local or preview D1 database.
 7. Run a Worker dry run.
 8. Deploy to a preview Worker or staging environment.
-9. Deploy the production Worker and apply remote D1 migrations with `pnpm deploy`.
+9. Merge the update PR so Workers Builds deploys the Worker and the deploy script applies remote D1 migrations.
 10. Open `/admin/update` and confirm the installed schema and migration list.
+
+## Managed Update PR Flow
+
+The recommended owner-friendly path is the committed GitHub workflow:
+
+1. In the site owner's repository, open **Actions**.
+2. Select **Update CFblog from upstream**.
+3. Run the workflow with the default upstream URL.
+4. Leave `target_ref` blank to use the release tag from upstream `latest.json`, or provide a specific tag, branch, or SHA.
+5. Review the created PR, including `CHANGELOG.md`, `UPGRADING.md`, schema version, and listed migrations.
+6. Merge the PR when checks are acceptable.
+
+The workflow creates or updates a branch named `update/cfblog-<version>`, merges the upstream release tag, runs install/test/build, pushes the branch, and opens a PR. If there is no diff from the current site repository, it exits successfully without opening a PR.
+
+GitHub repository settings must allow Actions to create pull requests. In GitHub, check **Settings > Actions > General > Workflow permissions** and enable the setting that allows GitHub Actions to create and approve pull requests. Organization repositories may also need the same setting enabled at the organization level.
 
 ## Git Update Flow
 
@@ -32,6 +47,8 @@ Add the template repository as an upstream remote once:
 ```sh
 git remote add upstream https://github.com/your-github-user/astro-cloudflare-blog-template.git
 ```
+
+This manual flow is equivalent to the workflow. Prefer release tags over `upstream/main` for reproducible updates.
 
 Fetch and merge updates:
 
@@ -88,7 +105,9 @@ The app also records its schema marker in D1 settings. If Wrangler reports no pe
 
 ## Optional Update Checks
 
-Set `CFBLOG_UPDATE_CHECK_URL` to a static HTTPS URL if you want `/admin/update` to compare the deployed template version with an external latest-version marker.
+Set `CFBLOG_UPDATE_CHECK_URL` to a static HTTPS URL if you want `/admin/update` to compare the deployed template version with an external latest-version marker. For the upstream template, point it at the raw `latest.json` file.
+
+Set `CFBLOG_UPDATE_WORKFLOW_URL` to the site's GitHub workflow page if you want `/admin/update` to show an **Open update workflow** link. This is only a link; CFblog does not trigger GitHub Actions itself.
 
 The URL may return plain text:
 
@@ -101,8 +120,11 @@ Or JSON:
 ```json
 {
   "version": "0.1.1",
+  "tag": "v0.1.1",
   "releaseUrl": "https://example.com/releases/0.1.1",
-  "notes": "Short release note."
+  "notes": "Short release note.",
+  "schemaVersion": "0007_next_change",
+  "migrations": ["0007_next_change"]
 }
 ```
 
@@ -113,3 +135,15 @@ The update check is read-only. It never pulls code, applies migrations, or deplo
 | Template version | Schema version       | Required migrations                         |
 | ---------------- | -------------------- | ------------------------------------------- |
 | 0.1.0            | 0006_integrations_settings | 0001 through 0006 in order.        |
+
+## Maintainer Release Checklist
+
+For each upstream CFblog release:
+
+1. Bump `TEMPLATE_VERSION` in `src/lib/version.ts`.
+2. Bump `SCHEMA_VERSION` only when a new migration changes the expected schema.
+3. Add any new D1 migration and update the migration ledger/status list.
+4. Update `CHANGELOG.md`.
+5. Update this `UPGRADING.md` file when operator steps change.
+6. Update root `latest.json` with `version`, `tag`, `releaseUrl`, `notes`, `schemaVersion`, and `migrations`.
+7. Create and push the matching git tag, for example `v0.1.1`.

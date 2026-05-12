@@ -207,7 +207,16 @@ Google Analytics and Google AdSense are optional and disabled by default. Config
 
 ## Updates
 
-CFblog updates are Git-based: pull template changes, test them, apply D1 migrations, and deploy the Worker. The admin panel includes `/admin/update` for installed template/schema visibility and an optional read-only update check. See [UPGRADING.md](UPGRADING.md) and [CHANGELOG.md](CHANGELOG.md).
+CFblog updates use a managed template update PR model:
+
+- Source code stays in the site owner's Git repository.
+- Editable content stays in D1 and uploaded media stays in R2.
+- Instance configuration should live in Cloudflare vars/secrets where possible, not hardcoded source edits.
+- CFblog does not self-update source code from inside the deployed Worker.
+
+The recommended path is the manually triggered **Update CFblog from upstream** GitHub workflow. It reads upstream `latest.json`, merges the latest release tag into an `update/cfblog-<version>` branch, runs install/test/build, and opens a PR for the site owner to review. After merge, Workers Builds deploys the Worker and the deploy script applies remote D1 migrations.
+
+The admin panel includes `/admin/update` for installed template/schema visibility, latest upstream release metadata, pending migration visibility, and an optional link to the GitHub workflow. See [UPGRADING.md](UPGRADING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## Development Environment Variables
 
@@ -232,6 +241,10 @@ CFBLOG_R2_BUCKET_NAME=my-blog-media
 # CFBLOG_KV_NAMESPACE_ID=
 # CFBLOG_WORKER_NAME=cfblog-my-instance
 # CFBLOG_SITE_URL=https://cfblog-my-instance.subdomain.workers.dev
+
+# Optional update metadata and workflow link for /admin/update.
+CFBLOG_UPDATE_CHECK_URL=https://raw.githubusercontent.com/McHughCyber/CFblog/main/latest.json
+CFBLOG_UPDATE_WORKFLOW_URL=https://github.com/OWNER/REPO/actions/workflows/update-from-upstream.yml
 ```
 
 Variable purpose:
@@ -251,6 +264,8 @@ Variable purpose:
 | `CFBLOG_WORKER_NAME` | Worker script name for a configured deploy. | Overrides `name` in generated config when set. |
 | `CFBLOG_SITE_URL` | Deployed public origin for a configured deploy. | Written into generated Wrangler `vars` when set. |
 | `CFBLOG_ENVIRONMENT` | Runtime label for a configured deploy. | Overrides default `vars.ENVIRONMENT` in generated config when set. |
+| `CFBLOG_UPDATE_CHECK_URL` | Static HTTPS URL for read-only latest-version metadata. | Point at upstream raw `latest.json` to populate `/admin/update`. |
+| `CFBLOG_UPDATE_WORKFLOW_URL` | GitHub Actions workflow URL for the site owner's repo. | Optional link only; CFblog does not trigger the workflow. |
 
 Recommended Wrangler authentication variable:
 

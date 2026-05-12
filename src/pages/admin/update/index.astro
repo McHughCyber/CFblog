@@ -1,16 +1,22 @@
 ---
 import { env } from "cloudflare:workers";
 import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { checkLatestVersion } from "../../../lib/update/check";
 import { getUpdateStatus } from "../../../lib/update/status";
 
 interface RuntimeEnv {
   CFBLOG_DB: D1Database;
   CFBLOG_UPDATE_CHECK_URL?: string;
+  CFBLOG_UPDATE_WORKFLOW_URL?: string;
 }
 
 const runtimeEnv = env as RuntimeEnv;
-const status = await getUpdateStatus(runtimeEnv.CFBLOG_DB);
+const [status, latest] = await Promise.all([
+  getUpdateStatus(runtimeEnv.CFBLOG_DB),
+  checkLatestVersion(runtimeEnv.CFBLOG_UPDATE_CHECK_URL)
+]);
 const updateCheckConfigured = Boolean(runtimeEnv.CFBLOG_UPDATE_CHECK_URL);
+const workflowUrl = runtimeEnv.CFBLOG_UPDATE_WORKFLOW_URL;
 ---
 
 <AdminLayout title="Updates">
@@ -45,6 +51,43 @@ const updateCheckConfigured = Boolean(runtimeEnv.CFBLOG_UPDATE_CHECK_URL);
         ? "Fetches the configured static latest-version URL without changing this deployment."
         : "Set CFBLOG_UPDATE_CHECK_URL to enable a read-only latest-version check."}
     </p>
+    <dl class="release-details">
+      <div>
+        <dt>Latest upstream</dt>
+        <dd>{latest.latestVersion ?? "Unknown"}</dd>
+      </div>
+      <div>
+        <dt>Release tag</dt>
+        <dd>{latest.tag ?? "Not provided"}</dd>
+      </div>
+      <div>
+        <dt>Required schema</dt>
+        <dd>{latest.schemaVersion ?? "Not provided"}</dd>
+      </div>
+    </dl>
+    {
+      latest.updateAvailable ? (
+        <div class="callout">
+          Update available: {latest.latestVersion}
+          {latest.releaseUrl ? (
+            <>
+              {" "}
+              <a href={latest.releaseUrl}>View release</a>
+            </>
+          ) : null}
+        </div>
+      ) : latest.error ? (
+        <div class="callout neutral">{latest.error}</div>
+      ) : (
+        <div class="callout">Current template is up to date.</div>
+      )
+    }
+    {latest.notes ? <p class="muted">{latest.notes}</p> : null}
+    {
+      latest.migrations.length > 0 ? (
+        <p class="muted">Release migrations: <code>{latest.migrations.join(", ")}</code></p>
+      ) : null
+    }
     <p class="status" id="update-check-status" role="status" />
   </section>
 
@@ -76,6 +119,17 @@ const updateCheckConfigured = Boolean(runtimeEnv.CFBLOG_UPDATE_CHECK_URL);
     <p class="muted">
       See <code>UPGRADING.md</code> in the repository for the full operator checklist.
     </p>
+    {
+      workflowUrl ? (
+        <p>
+          <a class="btn link-btn" href={workflowUrl}>Open update workflow</a>
+        </p>
+      ) : (
+        <p class="muted">
+          Set <code>CFBLOG_UPDATE_WORKFLOW_URL</code> to show a direct link to the manual GitHub update workflow.
+        </p>
+      )
+    }
   </section>
 </AdminLayout>
 
@@ -115,7 +169,8 @@ const updateCheckConfigured = Boolean(runtimeEnv.CFBLOG_UPDATE_CHECK_URL);
       return;
     }
     if (latest?.updateAvailable === true && typeof latest.latestVersion === "string") {
-      setStatus(`Update available: ${latest.latestVersion}`);
+      const tag = typeof latest.tag === "string" ? ` (${latest.tag})` : "";
+      setStatus(`Update available: ${latest.latestVersion}${tag}`);
       return;
     }
     const current = typeof status?.templateVersion === "string" ? status.templateVersion : "current";
@@ -199,14 +254,49 @@ const updateCheckConfigured = Boolean(runtimeEnv.CFBLOG_UPDATE_CHECK_URL);
     background: #f8eeee;
   }
 
+  .callout.neutral {
+    border-left-color: #8c7a35;
+    background: #f7f2db;
+  }
+
   .migration-list {
     margin: 0;
     padding-left: 20px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
+  .release-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+    margin: 0;
+  }
+
+  .release-details div {
+    border: 1px solid #e1dacd;
+    padding: 10px;
+    background: #fffdf8;
+  }
+
+  .release-details dt {
+    color: #6d756d;
+    font-size: 0.82rem;
+    margin-bottom: 4px;
+  }
+
+  .release-details dd {
+    margin: 0;
+    color: #1f2523;
+    overflow-wrap: anywhere;
+  }
+
   .status {
     min-height: 1.4em;
     margin: 0;
+  }
+
+  .link-btn {
+    display: inline-block;
+    text-decoration: none;
   }
 </style>

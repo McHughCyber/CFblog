@@ -1,0 +1,15 @@
+{
+  "version": "0.1.0",
+  "tag": "v0.1.0",
+  "releaseUrl": "https://github.com/McHughCyber/CFblog/releases/tag/v0.1.0",
+  "notes": "MVP development baseline with D1/R2 content storage, Cloudflare Access admin protection, update status support, and optional Google integrations.",
+  "schemaVersion": "0006_integrations_settings",
+  "migrations": [
+    "0001_initial_schema",
+    "0002_seed_defaults",
+    "0003_ai_traffic_settings",
+    "0004_update_strategy",
+    "0005_milestone_review_fixes",
+    "0006_integrations_settings"
+  ]
+}

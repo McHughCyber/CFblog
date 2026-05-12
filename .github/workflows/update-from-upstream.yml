@@ -1,0 +1,192 @@
+name: Update CFblog from upstream
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_url:
+        description: Upstream CFblog repository URL.
+        required: true
+        default: https://github.com/McHughCyber/CFblog.git
+      target_ref:
+        description: Optional upstream tag, branch, or SHA. Defaults to the tag in upstream latest.json.
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  update:
+    name: Open update PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout site repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.10.0 --activate
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Resolve upstream release
+        id: release
+        env:
+          UPSTREAM_URL: ${{ inputs.upstream_url }}
+          TARGET_REF: ${{ inputs.target_ref }}
+        run: |
+          set -euo pipefail
+
+          git remote remove cfblog-upstream 2>/dev/null || true
+          git remote add cfblog-upstream "$UPSTREAM_URL"
+          git fetch cfblog-upstream main --tags
+
+          if [ -z "$TARGET_REF" ]; then
+            git show cfblog-upstream/main:latest.json > /tmp/cfblog-latest.json
+            TARGET_REF="$(node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const manifest = JSON.parse(fs.readFileSync("/tmp/cfblog-latest.json", "utf8"));
+          if (!manifest.tag || typeof manifest.tag !== "string") {
+            throw new Error("upstream latest.json must include a tag");
+          }
+          process.stdout.write(manifest.tag);
+          NODE
+          )"
+          fi
+
+          git fetch cfblog-upstream "$TARGET_REF" --tags
+          if commit="$(git rev-parse "cfblog-upstream/$TARGET_REF^{commit}" 2>/dev/null)"; then
+            :
+          else
+            commit="$(git rev-parse "$TARGET_REF^{commit}")"
+          fi
+
+          if git show "$commit:latest.json" > /tmp/cfblog-release.json 2>/dev/null; then
+            :
+          else
+            printf '{"version":"%s","tag":"%s","releaseUrl":"","notes":"","schemaVersion":"","migrations":[]}\n' "${TARGET_REF#v}" "$TARGET_REF" > /tmp/cfblog-release.json
+          fi
+
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import fs from "node:fs";
+          const manifest = JSON.parse(fs.readFileSync("/tmp/cfblog-release.json", "utf8"));
+          const version = typeof manifest.version === "string" && manifest.version.trim() ? manifest.version.trim() : "manual";
+          const tag = typeof manifest.tag === "string" && manifest.tag.trim() ? manifest.tag.trim() : process.env.TARGET_REF;
+          const schemaVersion = typeof manifest.schemaVersion === "string" ? manifest.schemaVersion : "";
+          const releaseUrl = typeof manifest.releaseUrl === "string" ? manifest.releaseUrl : "";
+          const notes = typeof manifest.notes === "string" ? manifest.notes : "";
+          const migrations = Array.isArray(manifest.migrations) ? manifest.migrations.filter((item) => typeof item === "string") : [];
+          const branch = `update/cfblog-${version}`.replace(/[^A-Za-z0-9._/-]/g, "-");
+          const output = {
+            version,
+            tag,
+            schemaVersion,
+            releaseUrl,
+            notes,
+            migrations: migrations.join(", "),
+            branch
+          };
+          for (const [key, value] of Object.entries(output)) {
+            console.log(`${key}<<EOF`);
+            console.log(value);
+            console.log("EOF");
+          }
+          NODE
+
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Merge upstream release
+        id: merge
+        env:
+          BASE_BRANCH: ${{ github.ref_name }}
+          UPDATE_BRANCH: ${{ steps.release.outputs.branch }}
+          UPSTREAM_COMMIT: ${{ steps.release.outputs.commit }}
+        run: |
+          set -euo pipefail
+
+          git checkout -B "$UPDATE_BRANCH" "origin/$BASE_BRANCH"
+          git merge --no-edit "$UPSTREAM_COMMIT"
+
+          if git diff --quiet "origin/$BASE_BRANCH"...HEAD; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "CFblog is already current for $UPSTREAM_COMMIT."
+            exit 0
+          fi
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        if: steps.merge.outputs.changed == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        if: steps.merge.outputs.changed == 'true'
+        run: pnpm test
+
+      - name: Build
+        if: steps.merge.outputs.changed == 'true'
+        run: pnpm build
+
+      - name: Push update branch
+        if: steps.merge.outputs.changed == 'true'
+        env:
+          UPDATE_BRANCH: ${{ steps.release.outputs.branch }}
+        run: git push --force-with-lease origin "$UPDATE_BRANCH"
+
+      - name: Open or update pull request
+        if: steps.merge.outputs.changed == 'true'
+        env:
+          BASE_BRANCH: ${{ github.ref_name }}
+          UPDATE_BRANCH: ${{ steps.release.outputs.branch }}
+          VERSION: ${{ steps.release.outputs.version }}
+          TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_URL: ${{ steps.release.outputs.releaseUrl }}
+          NOTES: ${{ steps.release.outputs.notes }}
+          SCHEMA_VERSION: ${{ steps.release.outputs.schemaVersion }}
+          MIGRATIONS: ${{ steps.release.outputs.migrations }}
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/cfblog-pr-body.md <<EOF
+          ## CFblog upstream update
+
+          This PR updates this site repository from upstream CFblog release \`$TAG\`.
+
+          - Version: \`$VERSION\`
+          - Required schema: \`${SCHEMA_VERSION:-not specified}\`
+          - Migrations: \`${MIGRATIONS:-none listed}\`
+          - Release: ${RELEASE_URL:-not provided}
+
+          ${NOTES:-No release notes were provided in latest.json.}
+
+          Before merging, review \`CHANGELOG.md\` and \`UPGRADING.md\`. After merge, Workers Builds deploys the Worker and the deploy script applies remote D1 migrations.
+          EOF
+
+          existing_pr="$(gh pr list --base "$BASE_BRANCH" --head "$UPDATE_BRANCH" --json number --jq '.[0].number')"
+          if [ -n "$existing_pr" ]; then
+            gh pr edit "$existing_pr" \
+              --title "Update CFblog to $VERSION" \
+              --body-file /tmp/cfblog-pr-body.md
+            gh pr view "$existing_pr" --json url --jq .url
+          else
+            gh pr create \
+              --base "$BASE_BRANCH" \
+              --head "$UPDATE_BRANCH" \
+              --title "Update CFblog to $VERSION" \
+              --body-file /tmp/cfblog-pr-body.md
+          fi
