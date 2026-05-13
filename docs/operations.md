@@ -29,7 +29,11 @@ Recommended path:
 2. Review the opened PR, `CHANGELOG.md`, and `UPGRADING.md`.
 3. After merge, let Workers Builds deploy; the deploy script applies remote D1 migrations.
 
-Optional: set **`CFBLOG_UPDATE_CHECK_URL`** and **`CFBLOG_UPDATE_WORKFLOW_URL`** so **`/admin/update`** shows latest version metadata and a link to your workflow. Those URLs are read-only hints; they do not trigger Actions.
+Optional: set **`CFBLOG_UPDATE_CHECK_URL`** to the upstream latest release asset and **`CFBLOG_UPDATE_WORKFLOW_URL`** to your update workflow so **`/admin/update`** shows latest version metadata and a link to your workflow. Those URLs are read-only hints; they do not trigger Actions.
+
+```txt
+https://github.com/McHughCyber/CFblog/releases/latest/download/latest.json
+```
 
 ## Rollout checklist
 

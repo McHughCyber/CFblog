@@ -147,7 +147,10 @@ function buildInfo(input: {
   migrations: string[];
 }): LatestVersionInfo {
   const expectsReleaseTag = input.schemaVersion != null || input.migrations.length > 0 || input.tag != null;
-  const tagError = expectsReleaseTag && !isValidReleaseTag(input.tag) ? "Update manifest must include a release tag like v0.1.1." : null;
+  const tagError =
+    expectsReleaseTag && !isValidReleaseTag(input.tag)
+      ? "Update manifest must include a release tag like v2026.05.1."
+      : null;
 
   return {
     latestVersion: input.latestVersion,
@@ -163,5 +166,5 @@ function buildInfo(input: {
 }
 
 function isValidReleaseTag(value: string | null): boolean {
-  return value != null && /^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(value);
+  return value != null && /^v\d{4}\.\d{2}\.\d+$/.test(value);
 }

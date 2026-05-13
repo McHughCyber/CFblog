@@ -98,7 +98,7 @@ Store in Worker secrets or CI secret storage; do not commit.
 
 | Name | Role |
 | --- | --- |
-| `CFBLOG_UPDATE_CHECK_URL` | HTTPS URL returning version JSON or plain text; feeds `/admin/update` and related API. |
+| `CFBLOG_UPDATE_CHECK_URL` | HTTPS URL returning version JSON or plain text; feeds `/admin/update` and related API. For upstream CFblog, use `https://github.com/McHughCyber/CFblog/releases/latest/download/latest.json`. |
 | `CFBLOG_UPDATE_WORKFLOW_URL` | Optional link to the site owner’s GitHub Actions update workflow (display only). |
 
 ### Advanced deploy / generator inputs (`CFBLOG_*`)
