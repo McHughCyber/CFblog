@@ -150,8 +150,11 @@ For each upstream CFblog change:
 
 1. Merge the feature or fix PR into `main`.
 2. Let the `CI` workflow pass on `main`.
-3. The `Release CFblog` workflow creates a bot commit that updates `src/lib/version.ts` and `package.json`.
-4. Let `CI` pass on the bot release commit.
-5. The `Release CFblog` workflow creates the matching git tag, publishes a GitHub Release with generated release notes, and uploads `latest.json` as a release asset.
+3. The `Release CFblog` workflow creates or updates a release PR with a bot commit that updates `src/lib/version.ts` and `package.json`.
+4. Merge the release PR after its checks pass.
+5. Let `CI` pass on the merged release commit on `main`.
+6. The `Release CFblog` workflow creates the matching git tag, publishes a GitHub Release with generated release notes, and uploads `latest.json` as a release asset.
+
+GitHub repository rules may require release metadata changes to go through a pull request. The release workflow expects Actions to have permission to create pull requests.
 
 Only bump `SCHEMA_VERSION` when a new migration changes the expected schema. Keep `CHANGELOG.md` curated for milestone history; GitHub Releases use generated notes for per-release detail.
