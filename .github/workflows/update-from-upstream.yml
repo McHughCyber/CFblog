@@ -56,29 +56,44 @@ jobs:
 
           git remote remove cfblog-upstream 2>/dev/null || true
           git remote add cfblog-upstream "$UPSTREAM_URL"
-          git fetch cfblog-upstream main --tags
 
           if [ -z "$TARGET_REF" ]; then
-            git show cfblog-upstream/main:latest.json > /tmp/cfblog-latest.json
-            TARGET_REF="$(node --input-type=module <<'NODE'
-          import fs from "node:fs";
-          const manifest = JSON.parse(fs.readFileSync("/tmp/cfblog-latest.json", "utf8"));
-          if (!manifest.tag || typeof manifest.tag !== "string") {
-            throw new Error("upstream latest.json must include a tag");
-          }
-          process.stdout.write(manifest.tag);
-          NODE
-          )"
+            manifest_url="$(node scripts/resolve-upstream-release.mjs manifest-url "$UPSTREAM_URL")"
+            echo "Resolving latest CFblog release from $manifest_url"
+            if ! curl --fail --silent --show-error --location "$manifest_url" --output /tmp/cfblog-latest.json; then
+              echo "Unable to download upstream latest release manifest from $manifest_url." >&2
+              echo "Create a GitHub Release with latest.json attached, or provide target_ref manually." >&2
+              exit 1
+            fi
+            TARGET_REF="$(node scripts/resolve-upstream-release.mjs tag /tmp/cfblog-latest.json)"
+            cp /tmp/cfblog-latest.json /tmp/cfblog-release.json
           fi
 
-          git fetch cfblog-upstream "$TARGET_REF" --tags
+          if [[ "$TARGET_REF" == v* ]]; then
+            if ! git ls-remote --exit-code --tags cfblog-upstream "refs/tags/$TARGET_REF" >/dev/null 2>&1; then
+              echo "Upstream release manifest points to $TARGET_REF, but that tag does not exist at $UPSTREAM_URL." >&2
+              echo "Create and push the tag, or rerun this workflow with target_ref set to a branch or SHA." >&2
+              exit 1
+            fi
+            git fetch cfblog-upstream "refs/tags/$TARGET_REF:refs/tags/$TARGET_REF" --tags
+          else
+            git fetch cfblog-upstream "$TARGET_REF" --tags
+          fi
+
           if commit="$(git rev-parse "cfblog-upstream/$TARGET_REF^{commit}" 2>/dev/null)"; then
             :
+          elif commit="$(git rev-parse "$TARGET_REF^{commit}" 2>/dev/null)"; then
+            :
+          elif commit="$(git rev-parse "FETCH_HEAD^{commit}" 2>/dev/null)"; then
+            :
           else
-            commit="$(git rev-parse "$TARGET_REF^{commit}")"
+            echo "Unable to resolve upstream target_ref '$TARGET_REF' to a commit." >&2
+            exit 1
           fi
 
-          if git show "$commit:latest.json" > /tmp/cfblog-release.json 2>/dev/null; then
+          if [ -f /tmp/cfblog-release.json ]; then
+            :
+          elif git show "$commit:latest.json" > /tmp/cfblog-release.json 2>/dev/null; then
             :
           else
             printf '{"version":"%s","tag":"%s","releaseUrl":"","notes":"","schemaVersion":"","migrations":[]}\n' "${TARGET_REF#v}" "$TARGET_REF" > /tmp/cfblog-release.json

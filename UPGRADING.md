@@ -107,23 +107,27 @@ The app also records its schema marker in D1 settings. If Wrangler reports no pe
 
 ## Optional Update Checks
 
-Set `CFBLOG_UPDATE_CHECK_URL` to a static HTTPS URL if you want `/admin/update` to compare the deployed template version with an external latest-version marker. For the upstream template, point it at the raw `latest.json` file.
+Set `CFBLOG_UPDATE_CHECK_URL` to a static HTTPS URL if you want `/admin/update` to compare the deployed template version with an external latest-version marker. For the upstream template, point it at the latest GitHub Release asset:
+
+```txt
+https://github.com/McHughCyber/CFblog/releases/latest/download/latest.json
+```
 
 Set `CFBLOG_UPDATE_WORKFLOW_URL` to the site's GitHub workflow page if you want `/admin/update` to show an **Open update workflow** link. This is only a link; CFblog does not trigger GitHub Actions itself.
 
 The URL may return plain text:
 
 ```txt
-0.1.1
+2026.05.1
 ```
 
 Or JSON:
 
 ```json
 {
-  "version": "0.1.1",
-  "tag": "v0.1.1",
-  "releaseUrl": "https://example.com/releases/0.1.1",
+  "version": "2026.05.1",
+  "tag": "v2026.05.1",
+  "releaseUrl": "https://example.com/releases/2026.05.1",
   "notes": "Short release note.",
   "schemaVersion": "0007_next_change",
   "migrations": ["0007_next_change"]
@@ -140,12 +144,14 @@ The update check is read-only. It never pulls code, applies migrations, or deplo
 
 ## Maintainer Release Checklist
 
-For each upstream CFblog release:
+CFblog upstream releases are assigned automatically after updates land on `main` and pass CI. Versions use monthly CalVer in `YYYY.MM.N` form, where `N` resets each UTC month. Tags are the version prefixed with `v`, for example `v2026.05.1`. The npm `package.json` version is normalized without the month leading zero, for example `2026.5.1`, because npm package versions must be SemVer-compatible.
 
-1. Bump `TEMPLATE_VERSION` in `src/lib/version.ts`.
-2. Bump `SCHEMA_VERSION` only when a new migration changes the expected schema.
-3. Add any new D1 migration and update the migration ledger/status list.
-4. Update `CHANGELOG.md`.
-5. Update this `UPGRADING.md` file when operator steps change.
-6. Update root `latest.json` with `version`, `tag`, `releaseUrl`, `notes`, `schemaVersion`, and `migrations`.
-7. Create and push the matching git tag, for example `v0.1.1`.
+For each upstream CFblog change:
+
+1. Merge the feature or fix PR into `main`.
+2. Let the `CI` workflow pass on `main`.
+3. The `Release CFblog` workflow creates a bot commit that updates `src/lib/version.ts` and `package.json`.
+4. Let `CI` pass on the bot release commit.
+5. The `Release CFblog` workflow creates the matching git tag, publishes a GitHub Release with generated release notes, and uploads `latest.json` as a release asset.
+
+Only bump `SCHEMA_VERSION` when a new migration changes the expected schema. Keep `CHANGELOG.md` curated for milestone history; GitHub Releases use generated notes for per-release detail.

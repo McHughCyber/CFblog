@@ -12,6 +12,8 @@
     "build": "astro check && astro build",
     "preview": "wrangler dev",
     "wrangler:config": "node scripts/generate-wrangler-config.mjs",
+    "release:prepare": "node scripts/prepare-release-version.mjs",
+    "release:manifest": "node scripts/generate-latest-manifest.mjs latest.json",
     "deploy": "pnpm run build && wrangler deploy && pnpm run db:migrations:apply",
     "deploy:configured": "pnpm run build && pnpm run db:migrations:apply:configured && wrangler deploy --config wrangler.generated.jsonc",
     "db:migrations:apply": "wrangler d1 migrations apply CFBLOG_DB --remote --yes",
