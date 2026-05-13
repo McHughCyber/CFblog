@@ -20,6 +20,12 @@
       "bucket_name": "cfblog-media"
     }
   ],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
   "vars": {
     "ENVIRONMENT": "production",
     "SITE_URL": "https://replace-me.example.com"
