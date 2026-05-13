@@ -95,7 +95,7 @@ jobs:
           fi
 
           git commit -m "chore(release): $tag"
-          git push --force-with-lease origin "HEAD:$release_branch"
+          git push --force-with-lease origin "HEAD:refs/heads/$release_branch"
 
           pr_body="$(mktemp)"
           {
