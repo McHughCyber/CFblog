@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { TEMPLATE_VERSION } from "../version";
 import { checkLatestVersion } from "./check";
+
+const NEWER_FIXTURE_VERSION = "9999.12.1";
+const NEWER_FIXTURE_TAG = `v${NEWER_FIXTURE_VERSION}`;
+const NEWER_FIXTURE_RELEASE_URL = `https://example.com/releases/${NEWER_FIXTURE_VERSION}`;
 
 describe("checkLatestVersion", () => {
   it("reports unconfigured update checks", async () => {
@@ -12,14 +17,14 @@ describe("checkLatestVersion", () => {
     const result = await checkLatestVersion(
       "https://example.com/latest.json",
       async () =>
-        new Response(JSON.stringify({ version: "2026.05.1", releaseUrl: "https://example.com/releases/2026.05.1" }), {
+        new Response(JSON.stringify({ version: NEWER_FIXTURE_VERSION, releaseUrl: NEWER_FIXTURE_RELEASE_URL }), {
           headers: { "content-type": "application/json" }
         })
     );
 
-    expect(result.latestVersion).toBe("2026.05.1");
+    expect(result.latestVersion).toBe(NEWER_FIXTURE_VERSION);
     expect(result.updateAvailable).toBe(true);
-    expect(result.releaseUrl).toBe("https://example.com/releases/2026.05.1");
+    expect(result.releaseUrl).toBe(NEWER_FIXTURE_RELEASE_URL);
     expect(result.tag).toBeNull();
     expect(result.migrations).toEqual([]);
   });
@@ -30,9 +35,9 @@ describe("checkLatestVersion", () => {
       async () =>
         new Response(
           JSON.stringify({
-            version: "2026.05.1",
-            tag: "v2026.05.1",
-            releaseUrl: "https://example.com/releases/2026.05.1",
+            version: NEWER_FIXTURE_VERSION,
+            tag: NEWER_FIXTURE_TAG,
+            releaseUrl: NEWER_FIXTURE_RELEASE_URL,
             notes: "Maintenance release.",
             schemaVersion: "0007_managed_update_workflow",
             migrations: ["0007_managed_update_workflow"]
@@ -43,10 +48,10 @@ describe("checkLatestVersion", () => {
         )
     );
 
-    expect(result.latestVersion).toBe("2026.05.1");
-    expect(result.tag).toBe("v2026.05.1");
+    expect(result.latestVersion).toBe(NEWER_FIXTURE_VERSION);
+    expect(result.tag).toBe(NEWER_FIXTURE_TAG);
     expect(result.updateAvailable).toBe(true);
-    expect(result.releaseUrl).toBe("https://example.com/releases/2026.05.1");
+    expect(result.releaseUrl).toBe(NEWER_FIXTURE_RELEASE_URL);
     expect(result.notes).toBe("Maintenance release.");
     expect(result.schemaVersion).toBe("0007_managed_update_workflow");
     expect(result.migrations).toEqual(["0007_managed_update_workflow"]);
@@ -56,26 +61,40 @@ describe("checkLatestVersion", () => {
   it("parses plain text version responses", async () => {
     const result = await checkLatestVersion(
       "https://example.com/latest.txt",
-      async () => new Response("2026.05.1\n", { headers: { "content-type": "text/plain" } })
+      async () => new Response(`${NEWER_FIXTURE_VERSION}\n`, { headers: { "content-type": "text/plain" } })
     );
 
-    expect(result.latestVersion).toBe("2026.05.1");
+    expect(result.latestVersion).toBe(NEWER_FIXTURE_VERSION);
     expect(result.updateAvailable).toBe(true);
     expect(result.tag).toBeNull();
     expect(result.schemaVersion).toBeNull();
     expect(result.migrations).toEqual([]);
   });
 
-  it("reports rich manifests with missing release tags", async () => {
+  it("does not report an update when the latest version matches the installed version", async () => {
     const result = await checkLatestVersion(
       "https://example.com/latest.json",
       async () =>
-        new Response(JSON.stringify({ version: "2026.05.1", schemaVersion: "0007_managed_update_workflow" }), {
+        new Response(JSON.stringify({ version: TEMPLATE_VERSION }), {
           headers: { "content-type": "application/json" }
         })
     );
 
-    expect(result.latestVersion).toBe("2026.05.1");
+    expect(result.latestVersion).toBe(TEMPLATE_VERSION);
+    expect(result.updateAvailable).toBe(false);
+    expect(result.error).toBeNull();
+  });
+
+  it("reports rich manifests with missing release tags", async () => {
+    const result = await checkLatestVersion(
+      "https://example.com/latest.json",
+      async () =>
+        new Response(JSON.stringify({ version: NEWER_FIXTURE_VERSION, schemaVersion: "0007_managed_update_workflow" }), {
+          headers: { "content-type": "application/json" }
+        })
+    );
+
+    expect(result.latestVersion).toBe(NEWER_FIXTURE_VERSION);
     expect(result.updateAvailable).toBe(false);
     expect(result.error).toContain("release tag");
   });
@@ -84,12 +103,12 @@ describe("checkLatestVersion", () => {
     const result = await checkLatestVersion(
       "https://example.com/latest.json",
       async () =>
-        new Response(JSON.stringify({ version: "2026.05.1", tag: "v0.1.0" }), {
+        new Response(JSON.stringify({ version: NEWER_FIXTURE_VERSION, tag: "v0.1.0" }), {
           headers: { "content-type": "application/json" }
         })
     );
 
-    expect(result.latestVersion).toBe("2026.05.1");
+    expect(result.latestVersion).toBe(NEWER_FIXTURE_VERSION);
     expect(result.updateAvailable).toBe(false);
     expect(result.error).toContain("release tag");
   });
