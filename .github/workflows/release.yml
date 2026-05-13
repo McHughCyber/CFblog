@@ -1,0 +1,118 @@
+name: Release CFblog
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: cfblog-release-main
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  release:
+    name: Version, tag, and publish
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout validated commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Classify commit
+        id: commit
+        run: |
+          set -euo pipefail
+
+          subject="$(git log -1 --format=%s)"
+          if printf '%s\n' "$subject" | grep -Eq '^chore\(release\): v[0-9]{4}\.[0-9]{2}\.[0-9]+$'; then
+            echo "release_commit=true" >> "$GITHUB_OUTPUT"
+            echo "tag=${subject#chore(release): }" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_commit=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare release version commit
+        if: steps.commit.outputs.release_commit != 'true'
+        run: |
+          set -euo pipefail
+
+          git fetch --tags origin
+          node scripts/prepare-release-version.mjs
+
+          version="$(node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const source = fs.readFileSync("src/lib/version.ts", "utf8");
+          const match = /TEMPLATE_VERSION = "([^"]+)"/.exec(source);
+          if (!match) {
+            throw new Error("src/lib/version.ts does not contain TEMPLATE_VERSION");
+          }
+          process.stdout.write(match[1]);
+          NODE
+          )"
+          tag="v$version"
+
+          git add src/lib/version.ts package.json
+          if git diff --cached --quiet; then
+            echo "No release metadata changes were produced."
+            exit 0
+          fi
+
+          git commit -m "chore(release): $tag"
+          git push origin "HEAD:main"
+          gh workflow run ci.yml --ref main
+
+      - name: Publish release
+        if: steps.commit.outputs.release_commit == 'true'
+        env:
+          TAG: ${{ steps.commit.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          current_sha="$(git rev-parse HEAD)"
+          existing_sha="$(git rev-parse "$TAG^{commit}" 2>/dev/null || true)"
+
+          if [ -n "$existing_sha" ] && [ "$existing_sha" != "$current_sha" ]; then
+            echo "Release tag $TAG already exists at $existing_sha, not $current_sha." >&2
+            exit 1
+          fi
+
+          if [ -z "$existing_sha" ]; then
+            git tag "$TAG" "$current_sha"
+            git push origin "$TAG"
+          fi
+
+          node scripts/generate-latest-manifest.mjs latest.json
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" latest.json --clobber
+          else
+            gh release create "$TAG" latest.json \
+              --target "$current_sha" \
+              --title "$TAG" \
+              --generate-notes
+          fi

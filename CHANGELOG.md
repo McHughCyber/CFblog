@@ -4,6 +4,11 @@
 
 All notable CFblog template changes are tracked here.
 
+## Unreleased
+
+- Added automated monthly CalVer release versioning for upstream `main`, with bot-managed release metadata commits, GitHub release tags, and `latest.json` release assets.
+- Updated managed upstream updates to read release metadata from the latest GitHub Release asset and fail clearly when an advertised tag is missing.
+
 ## 0.1.0 - 2026-05-03
 
 Initial MVP development line.
