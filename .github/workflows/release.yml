@@ -60,7 +60,7 @@ jobs:
           NODE
           )"
 
-          if printf '%s\n' "$version" | grep -Eq '^[0-9]{4}\.[0-9]{2}\.[0-9]+$' && ! git rev-parse "v$version^{commit}" >/dev/null 2>&1; then
+          if printf '%s\n' "$version" | grep -Eq '^[0-9]{4}\.[0-9]{2}\.[0-9]+$' && ! git rev-parse --verify --quiet "v$version^{commit}" >/dev/null; then
             echo "release_commit=true" >> "$GITHUB_OUTPUT"
             echo "tag=v$version" >> "$GITHUB_OUTPUT"
           else
@@ -126,7 +126,7 @@ jobs:
           set -euo pipefail
 
           current_sha="$(git rev-parse HEAD)"
-          existing_sha="$(git rev-parse "$TAG^{commit}" 2>/dev/null || true)"
+          existing_sha="$(git rev-parse --verify --quiet "$TAG^{commit}" || true)"
 
           if [ -n "$existing_sha" ] && [ "$existing_sha" != "$current_sha" ]; then
             echo "Release tag $TAG already exists at $existing_sha, not $current_sha." >&2
