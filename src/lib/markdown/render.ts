@@ -31,6 +31,9 @@ export async function renderMarkdown(markdown: string): Promise<string> {
 
   return sanitizeHtml(html, {
     allowedTags,
+    // Explicitly include xmp in nonTextTags so its raw contents are fully
+    // dropped rather than passed through unescaped (GHSA-rpr9-rxv7-x643).
+    nonTextTags: ["style", "script", "textarea", "option", "noscript", "xmp"],
     allowedAttributes: {
       a: ["href", "name", "target", "rel"],
       img: ["src", "alt", "title", "width", "height", "loading"]

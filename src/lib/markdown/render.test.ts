@@ -57,4 +57,18 @@ describe("renderMarkdown", () => {
     expect(html).not.toContain("data:text/html");
     expect(html).not.toContain("<script>");
   });
+
+  it("strips xmp-wrapped script and HTML payloads (GHSA-rpr9-rxv7-x643)", async () => {
+    const html = await renderMarkdown(
+      [
+        "<xmp><script>alert(1)</script></xmp>",
+        "<xmp><img src=x onerror=alert(1)></xmp>",
+        "<xmp><svg><script>alert(1)</script></svg></xmp>"
+      ].join("\n")
+    );
+
+    expect(html).not.toContain("<script>");
+    expect(html).not.toContain("onerror");
+    expect(html).not.toContain("<svg>");
+  });
 });
