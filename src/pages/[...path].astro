@@ -4,14 +4,13 @@ import AdSenseSlot from "../components/site/AdSenseSlot.astro";
 import IntegrationsHead from "../components/site/IntegrationsHead.astro";
 import PublicLayout from "../components/site/PublicLayout.astro";
 import ThemeHead from "../components/site/ThemeHead.astro";
-import { getCategoryAncestors, getCategoryByFullPath } from "../lib/db/categories";
+import { getCategoryAncestors } from "../lib/db/categories";
 import {
   countPublishedPostsByCategoryId,
   getPrimaryCategoryForPost,
-  getPublishedPostByFullPath,
   listPublishedPostsByCategoryId
 } from "../lib/db/posts";
-import { getRedirectByFromPath } from "../lib/db/redirects";
+import { resolvePublicRoute } from "../lib/routing/resolve-public-route";
 import { getMediaAssetById } from "../lib/db/media";
 import { getSetting } from "../lib/db/settings";
 import { loadIntegrationsSettings } from "../lib/integrations/load";
@@ -74,10 +73,20 @@ const [theme, integrations] = await Promise.all([
   loadIntegrationsSettings(runtimeEnv.CFBLOG_DB)
 ]);
 
-let page: PageModel | null = null;
-const post = await getPublishedPostByFullPath(runtimeEnv.CFBLOG_DB, requestedPath);
+const route = await resolvePublicRoute(runtimeEnv.CFBLOG_DB, requestedPath);
 
-if (post) {
+if (route.kind === "redirect") {
+  return Astro.redirect(route.redirect.to_path, route.redirect.status_code);
+}
+
+if (route.kind === "not_found") {
+  return Astro.rewrite("/404");
+}
+
+let page: PageModel | null = null;
+
+if (route.kind === "post") {
+  const post = route.post;
   const primaryCategory = await getPrimaryCategoryForPost(
     runtimeEnv.CFBLOG_DB,
     post.id
@@ -101,49 +110,40 @@ if (post) {
       { label: post.title, href: post.full_path }
     ]
   };
-} else {
-  const category = await getCategoryByFullPath(runtimeEnv.CFBLOG_DB, requestedPath);
+} else if (route.kind === "category") {
+  const category = route.category;
+  const totalPosts = await countPublishedPostsByCategoryId(
+    runtimeEnv.CFBLOG_DB,
+    category.id
+  );
+  const pagination = createPagination(
+    totalPosts,
+    parsePage(Astro.url.searchParams.get("page")),
+    site.postsPerPage
+  );
+  const breadcrumbs = [
+    { label: "Home", href: "/" },
+    ...(await getCategoryAncestors(runtimeEnv.CFBLOG_DB, category.id)).map(
+      (ancestor) => ({
+        label: ancestor.name,
+        href: ancestor.full_path
+      })
+    )
+  ];
 
-  if (category) {
-    const totalPosts = await countPublishedPostsByCategoryId(
-      runtimeEnv.CFBLOG_DB,
-      category.id
-    );
-    const pagination = createPagination(
-      totalPosts,
-      parsePage(Astro.url.searchParams.get("page")),
-      site.postsPerPage
-    );
-    const breadcrumbs = [
-      { label: "Home", href: "/" },
-      ...(await getCategoryAncestors(runtimeEnv.CFBLOG_DB, category.id)).map(
-        (ancestor) => ({
-          label: ancestor.name,
-          href: ancestor.full_path
-        })
-      )
-    ];
-
-    page = {
-      kind: "category",
-      category,
-      posts: await listPublishedPostsByCategoryId(runtimeEnv.CFBLOG_DB, category.id, {
-        limit: pagination.perPage,
-        offset: pagination.offset
-      }),
-      breadcrumbs,
-      pagination
-    };
-  }
+  page = {
+    kind: "category",
+    category,
+    posts: await listPublishedPostsByCategoryId(runtimeEnv.CFBLOG_DB, category.id, {
+      limit: pagination.perPage,
+      offset: pagination.offset
+    }),
+    breadcrumbs,
+    pagination
+  };
 }
 
 if (!page) {
-  const redirect = await getRedirectByFromPath(runtimeEnv.CFBLOG_DB, requestedPath);
-
-  if (redirect) {
-    return Astro.redirect(redirect.to_path, redirect.status_code);
-  }
-
   return Astro.rewrite("/404");
 }
 
