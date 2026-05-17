@@ -14,8 +14,8 @@ Defined in `package.json`. Run with `pnpm <script>` (or `corepack pnpm <script>`
 | `wrangler:config` | `node scripts/generate-wrangler-config.mjs` | Writes gitignored `wrangler.generated.jsonc` from `wrangler.jsonc` plus `CFBLOG_*` env vars. |
 | `deploy` | `pnpm run build && wrangler deploy && pnpm run db:migrations:apply` | Default production-style deploy using `wrangler.jsonc`, then remote D1 migrations. |
 | `deploy:configured` | `pnpm run build && pnpm run db:migrations:apply:configured && wrangler deploy --config wrangler.generated.jsonc` | Advanced deploy using generated config. |
-| `db:migrations:apply` | `wrangler d1 migrations apply CFBLOG_DB --remote --yes` | Apply pending migrations to remote D1 bound as `CFBLOG_DB` in `wrangler.jsonc`. |
-| `db:migrations:apply:configured` | `pnpm run wrangler:config && wrangler d1 migrations apply CFBLOG_DB --remote --config wrangler.generated.jsonc --yes` | Remote migrations against generated config. |
+| `db:migrations:apply` | `wrangler d1 migrations apply CFBLOG_DB --remote` | Apply pending migrations to remote D1 bound as `CFBLOG_DB` in `wrangler.jsonc`. Wrangler prompts for confirmation in an interactive terminal; in CI/non-interactive shells the prompt is skipped. |
+| `db:migrations:apply:configured` | `pnpm run wrangler:config && wrangler d1 migrations apply CFBLOG_DB --remote --config wrangler.generated.jsonc` | Remote migrations against generated config. |
 | `db:migrations:apply:local` | `wrangler d1 migrations apply CFBLOG_DB --local` | Apply migrations to local D1 (Wrangler dev). |
 | `db:migrations:list` | `wrangler d1 migrations list CFBLOG_DB --remote` | List remote migration status. |
 | `db:migrations:list:configured` | `pnpm run wrangler:config && wrangler d1 migrations list CFBLOG_DB --remote --config wrangler.generated.jsonc` | List remote migration status for generated config. |
@@ -153,6 +153,9 @@ All admin HTML and admin API routes require Cloudflare Access JWT validation in 
 | `/admin/menus/{menuKey}` | Menu detail. |
 | `/admin/menus/{menuKey}/items/new` | New menu item. |
 | `/admin/menus/{menuKey}/items/{itemId}/edit` | Edit menu item. |
+| `/admin/redirects` | Redirect list, search, CSV import. |
+| `/admin/redirects/new` | Create redirect. |
+| `/admin/redirects/{id}/edit` | Edit redirect destination and status. |
 | `/admin/media` | Media library uploads and metadata. |
 | `/admin/theme` | Theme settings. |
 | `/admin/settings` | Site settings, AI traffic hints, Google integrations. |
@@ -169,6 +172,9 @@ JSON and mutation endpoints used by the admin UI (examples; not every method on 
 | `/api/admin/posts/{id}/revisions/{revisionId}` | Revision fetch. |
 | `/api/admin/categories`, `/api/admin/categories/{id}` | Categories. |
 | `/api/admin/menus/...` | Menus and items. |
+| `/api/admin/redirects` | Redirect list and create. |
+| `/api/admin/redirects/{id}` | Redirect read, update, delete. |
+| `/api/admin/redirects/import` | Bulk CSV or JSON redirect import (max 2000 rows). |
 | `/api/admin/media`, `/api/admin/media/{id}` | Media upload and asset operations. |
 | `/api/admin/theme` | Theme persistence. |
 | `/api/admin/settings/integrations` | Google and related integration settings. |
