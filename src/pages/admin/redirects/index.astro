@@ -153,7 +153,7 @@ const total = await countRedirects(runtimeEnv.CFBLOG_DB, { q });
       const rows = Array.isArray(record.results) ? record.results : [];
       for (const row of rows) {
         if (!row || typeof row !== "object") continue;
-        const tr = document.createElement("tr");
+        const tableRow = document.createElement("tr");
         const fromPath = "fromPath" in row ? String(row.fromPath) : "";
         const ok = "ok" in row && row.ok === true;
         const error = "error" in row && typeof row.error === "string" ? row.error : "";
@@ -162,8 +162,9 @@ const total = await countRedirects(runtimeEnv.CFBLOG_DB, { q });
         fromCell.textContent = fromPath;
         const resultCell = document.createElement("td");
         resultCell.textContent = ok ? "OK" : error;
-        tr.append(fromCell, resultCell);
-        importResults.appendChild(tr);
+        tableRow.appendChild(fromCell);
+        tableRow.appendChild(resultCell);
+        importResults.appendChild(tableRow);
       }
       importResultsWrap.classList.remove("hidden");
     }
