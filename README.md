@@ -40,6 +40,7 @@ AI Crawl Control and Pay Per Crawl are **zone-level** Cloudflare features; the a
 | --- | --- |
 | [docs/getting-started.md](docs/getting-started.md) | Tutorial: clone to working local admin. |
 | [docs/deployment.md](docs/deployment.md) | How-to: Deploy button, `pnpm deploy`, advanced configured deploy. |
+| [docs/development-lifecycle.md](docs/development-lifecycle.md) | Explanation: GitHub workflows from development through release and downstream updates. |
 | [docs/security-and-access.md](docs/security-and-access.md) | How-to: Access apps, JWT validation, local bypass, CI tokens. |
 | [docs/operations.md](docs/operations.md) | How-to: backups, migrations, updates, rollout, recovery. |
 | [docs/admin-guide.md](docs/admin-guide.md) | How-to: `/admin` features for operators. |

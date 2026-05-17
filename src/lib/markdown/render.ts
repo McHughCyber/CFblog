@@ -30,6 +30,7 @@ export async function renderMarkdown(markdown: string): Promise<string> {
   });
 
   return sanitizeHtml(html, {
+    nonTextTags: ["style", "script", "textarea", "option", "noscript", "xmp"],
     allowedTags,
     allowedAttributes: {
       a: ["href", "name", "target", "rel"],
