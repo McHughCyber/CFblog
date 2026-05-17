@@ -15,9 +15,22 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  trufflehog:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Trufflehog Actions Scan
+        uses: edplato/trufflehog-actions-scan@v0.9m-beta
+
   validate:
     name: Test and build
     runs-on: ubuntu-latest
+    needs: trufflehog
     steps:
       - name: Checkout
         uses: actions/checkout@v4
