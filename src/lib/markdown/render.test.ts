@@ -43,6 +43,21 @@ describe("renderMarkdown", () => {
     expect(html).not.toContain("onclick");
   });
 
+  it("strips xmp smuggled script and event-handler payloads (GHSA-rpr9-rxv7-x643)", async () => {
+    const cases = [
+      "<xmp><script>alert(1)</script></xmp>",
+      "<xmp><img src=x onerror=alert(1)></xmp>",
+      "<xmp><svg><script>alert(1)</script></svg></xmp>"
+    ];
+
+    for (const markdown of cases) {
+      const html = await renderMarkdown(markdown);
+      expect(html).not.toMatch(/<script/i);
+      expect(html).not.toMatch(/onerror/i);
+      expect(html).not.toMatch(/<svg/i);
+    }
+  });
+
   it("allows http, https, and mailto links while stripping unsafe schemes", async () => {
     const html = await renderMarkdown(
       [
