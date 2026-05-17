@@ -547,7 +547,7 @@ This document tracks implementation progress for the Astro blog template MVP. Up
 | Menu customization works               | In Progress | Admin CRUD and public menus implemented; add footer seed items in new installs if desired. |
 | Image insertion works                  | Implemented | Editor media panel and Markdown sanitiser allow `/media/...` image paths. |
 | Theme customization works              | Implemented | Theme settings, `ThemeHead`, public pages, and tests; deployed QA pending. |
-| Redirects work after slug change       | Implemented | Post/category upserts create redirect records when full paths change; end-to-end admin flow pending. |
+| Redirects work after slug change       | Completed | Auto-redirect on path change; admin CRUD and CSV import at `/admin/redirects` (see `plan/feature-redirect-url-management-1.md`). |
 | Sitemap renders                        | Completed | `curl /sitemap.xml` returns D1-backed XML. |
 | RSS renders                            | Completed | `curl /rss.xml` returns D1-backed RSS. |
 | Robots.txt renders                     | Completed | `curl /robots.txt` returns D1-backed AI traffic policy and sitemap reference. |

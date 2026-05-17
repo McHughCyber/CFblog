@@ -84,6 +84,8 @@ describe("redirect creation", () => {
       "/old-post",
       "/new-post",
       301,
+      "2026-05-05T00:00:00.000Z",
+      null,
       "2026-05-05T00:00:00.000Z"
     ]);
   });
@@ -118,6 +120,8 @@ describe("redirect creation", () => {
       "/guides",
       "/tutorials",
       301,
+      "2026-05-05T00:00:00.000Z",
+      null,
       "2026-05-05T00:00:00.000Z"
     ]);
   });
