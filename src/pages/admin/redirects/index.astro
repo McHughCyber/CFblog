@@ -157,7 +157,12 @@ const total = await countRedirects(runtimeEnv.CFBLOG_DB, { q });
         const fromPath = "fromPath" in row ? String(row.fromPath) : "";
         const ok = "ok" in row && row.ok === true;
         const error = "error" in row && typeof row.error === "string" ? row.error : "";
-        tr.innerHTML = `<td class="mono">${fromPath}</td><td>${ok ? "OK" : error}</td>`;
+        const fromCell = document.createElement("td");
+        fromCell.className = "mono";
+        fromCell.textContent = fromPath;
+        const resultCell = document.createElement("td");
+        resultCell.textContent = ok ? "OK" : error;
+        tr.append(fromCell, resultCell);
         importResults.appendChild(tr);
       }
       importResultsWrap.classList.remove("hidden");
