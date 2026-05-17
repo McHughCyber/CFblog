@@ -1,6 +1,6 @@
 # Operations
 
-How to run, back up, update, and recover a **live** CFblog instance. For first deploy, see [Deployment](deployment.md). For scripts and bindings, see [Configuration reference](configuration-reference.md). Template version and schema detail also live in [UPGRADING.md](../UPGRADING.md).
+How to run, back up, update, and recover a **live** CFblog instance. For first deploy, see [Deployment](deployment.md). For the GitHub workflow lifecycle, see [Development and Release Lifecycle](development-lifecycle.md). For scripts and bindings, see [Configuration reference](configuration-reference.md). Template version and schema detail also live in [UPGRADING.md](../UPGRADING.md).
 
 ## Backups
 
@@ -26,8 +26,10 @@ CFblog does **not** self-update source from inside the Worker. Source lives in G
 Recommended path:
 
 1. Run the **Update CFblog from upstream** GitHub workflow (or merge upstream manually as in [UPGRADING.md](../UPGRADING.md)).
-2. Review the opened PR, `CHANGELOG.md`, and `UPGRADING.md`.
-3. After merge, let Workers Builds deploy; the deploy script applies remote D1 migrations.
+2. Review the opened PR, `CHANGELOG.md`, `UPGRADING.md`, schema version, and listed migrations.
+3. Back up production D1 and important R2 objects before applying migrations.
+4. Validate with local or preview D1 migrations and a staging Worker when the change is risky.
+5. After merge, let Workers Builds or your deployment process run the deploy command; the deploy script applies remote D1 migrations.
 
 Optional: set **`CFBLOG_UPDATE_CHECK_URL`** to the upstream latest release asset and **`CFBLOG_UPDATE_WORKFLOW_URL`** to your update workflow so **`/admin/update`** shows latest version metadata and a link to your workflow. Those URLs are read-only hints; they do not trigger Actions.
 

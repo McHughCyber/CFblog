@@ -1,6 +1,6 @@
 # Deployment
 
-Problem-oriented guide: ship CFblog to Cloudflare Workers with D1 and R2. For first-time local setup, complete [Getting started](getting-started.md) first. For variables and routes, use [Configuration reference](configuration-reference.md). For Access and admin protection, see [Security and Access](security-and-access.md).
+Problem-oriented guide: ship CFblog to Cloudflare Workers with D1 and R2. For first-time local setup, complete [Getting started](getting-started.md) first. For variables and routes, use [Configuration reference](configuration-reference.md). For Access and admin protection, see [Security and Access](security-and-access.md). For how GitHub workflows validate, release, and update CFblog, see [Development and Release Lifecycle](development-lifecycle.md).
 
 ## What you are deploying
 
@@ -63,6 +63,8 @@ This writes **`wrangler.generated.jsonc`** (gitignored), applies remote migratio
 ## CI test deploy
 
 The repository’s GitHub Actions workflow can deploy a **configured** test stack and validate routes using **Access service tokens**. That is optional operator automation; variable and secret **names** are described in [Security and Access](security-and-access.md#ci-and-machine-access).
+
+The CI test deploy runs only from the `testing` branch or a manual run on that branch. Production deployment is separate: use Cloudflare Workers Builds, the Deploy to Cloudflare flow, or a manual `pnpm deploy` / `pnpm deploy:configured` process.
 
 ## Troubleshooting
 
