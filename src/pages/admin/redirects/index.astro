@@ -1,0 +1,348 @@
+---
+import { env } from "cloudflare:workers";
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import EmptyState from "../../../components/admin/EmptyState.astro";
+import { countRedirects, listRedirects } from "../../../lib/db/redirects";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const q = Astro.url.searchParams.get("q")?.trim() || undefined;
+const redirects = await listRedirects(runtimeEnv.CFBLOG_DB, { limit: 200, offset: 0, q });
+const total = await countRedirects(runtimeEnv.CFBLOG_DB, { q });
+---
+
+<AdminLayout title="Redirects">
+  <div class="page-head">
+    <button type="button" class="btn secondary" id="import-toggle">Import CSV</button>
+    <a class="new-link" href="/admin/redirects/new">New redirect</a>
+  </div>
+
+  <form class="filters" method="get" action="/admin/redirects">
+    <label class="grow">
+      Search
+      <input type="search" name="q" placeholder="From path, to path, or note" value={q ?? ""} />
+    </label>
+    <button type="submit" class="btn">Search</button>
+    {q ? <a class="btn secondary" href="/admin/redirects">Clear</a> : null}
+  </form>
+
+  <p class="meta">{total} redirect{total === 1 ? "" : "s"}</p>
+
+  <section class="import-panel hidden" id="import-panel" aria-label="CSV import">
+    <h2>Import redirects</h2>
+    <p class="hint">
+      CSV columns: <code>from_path,to_path,status_code,note</code>. Header row is optional. Maximum 2000 rows per import.
+    </p>
+    <label>
+      CSV file
+      <input type="file" id="import-file" accept=".csv,text/csv,text/plain" />
+    </label>
+    <label>
+      Or paste CSV
+      <textarea id="import-paste" rows="6" placeholder="from_path,to_path,status_code,note&#10;/old-path,/new-path,301,WP post 1"></textarea>
+    </label>
+    <button type="button" class="btn" id="import-submit">Import</button>
+    <p class="status" id="import-status" role="status"></p>
+    <div id="import-results-wrap" class="hidden">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>From path</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody id="import-results"></tbody>
+      </table>
+    </div>
+  </section>
+
+  {
+    redirects.length === 0 ? (
+      <EmptyState
+        title="No redirects yet"
+        detail="Add redirects for legacy WordPress paths or other URL changes. Changing a post or category path in CFblog still creates redirects automatically."
+      />
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>From path</th>
+              <th>To path</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {redirects.map((r) => (
+              <tr data-redirect-id={r.id}>
+                <td class="mono">{r.from_path}</td>
+                <td class="mono">{r.to_path}</td>
+                <td>{r.status_code}</td>
+                <td>{r.created_at}</td>
+                <td class="actions">
+                  <a href={`/admin/redirects/${r.id}/edit`}>Edit</a>
+                  <button type="button" class="link-btn delete-btn" data-id={r.id}>
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</AdminLayout>
+
+<script>
+  const importToggle = document.getElementById("import-toggle");
+  const importPanel = document.getElementById("import-panel");
+  const importFile = document.getElementById("import-file");
+  const importPaste = document.getElementById("import-paste");
+  const importSubmit = document.getElementById("import-submit");
+  const importStatus = document.getElementById("import-status");
+  const importResultsWrap = document.getElementById("import-results-wrap");
+  const importResults = document.getElementById("import-results");
+
+  importToggle?.addEventListener("click", () => {
+    importPanel?.classList.toggle("hidden");
+  });
+
+  function errorMessage(payload: unknown): string | null {
+    if (!payload || typeof payload !== "object" || !("error" in payload)) {
+      return null;
+    }
+    const error = (payload as { error: unknown }).error;
+    return typeof error === "string" ? error : null;
+  }
+
+  function asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+  }
+
+  function setImportStatus(message: string, isError: boolean) {
+    if (!(importStatus instanceof HTMLElement)) return;
+    importStatus.textContent = message;
+    importStatus.classList.toggle("error", isError);
+  }
+
+  async function runImport(body: string, contentType: string) {
+    setImportStatus("Importing...", false);
+    const res = await fetch("/api/admin/redirects/import", {
+      method: "POST",
+      headers: { "content-type": contentType },
+      credentials: "same-origin",
+      body
+    });
+    const payload: unknown = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setImportStatus(errorMessage(payload) ?? "Import failed.", true);
+      return;
+    }
+    const record = asRecord(payload) ?? {};
+    const imported = typeof record.imported === "number" ? record.imported : 0;
+    const failed = typeof record.failed === "number" ? record.failed : 0;
+    setImportStatus(`Imported ${imported} redirect(s). ${failed} failed.`, failed > 0);
+    if (importResults instanceof HTMLElement && importResultsWrap instanceof HTMLElement) {
+      importResults.innerHTML = "";
+      const rows = Array.isArray(record.results) ? record.results : [];
+      for (const row of rows) {
+        if (!row || typeof row !== "object") continue;
+        const tr = document.createElement("tr");
+        const fromPath = "fromPath" in row ? String(row.fromPath) : "";
+        const ok = "ok" in row && row.ok === true;
+        const error = "error" in row && typeof row.error === "string" ? row.error : "";
+        tr.innerHTML = `<td class="mono">${fromPath}</td><td>${ok ? "OK" : error}</td>`;
+        importResults.appendChild(tr);
+      }
+      importResultsWrap.classList.remove("hidden");
+    }
+    if (failed === 0 && imported > 0) {
+      window.setTimeout(() => window.location.reload(), 800);
+    }
+  }
+
+  importSubmit?.addEventListener("click", async () => {
+    if (importFile instanceof HTMLInputElement && importFile.files?.[0]) {
+      const text = await importFile.files[0].text();
+      await runImport(text, "text/csv");
+      return;
+    }
+    if (importPaste instanceof HTMLTextAreaElement && importPaste.value.trim()) {
+      await runImport(importPaste.value, "text/csv");
+      return;
+    }
+    setImportStatus("Choose a file or paste CSV content.", true);
+  });
+
+  document.querySelectorAll(".delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn instanceof HTMLButtonElement ? btn.dataset.id : "";
+      if (!id || !confirm("Delete this redirect?")) return;
+      const res = await fetch(`/api/admin/redirects/${id}`, {
+        method: "DELETE",
+        credentials: "same-origin"
+      });
+      if (!res.ok) {
+        alert("Could not delete redirect.");
+        return;
+      }
+      btn.closest("tr")?.remove();
+    });
+  });
+</script>
+
+<style>
+  .page-head {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .new-link {
+    display: inline-block;
+    padding: 9px 16px;
+    border-radius: 6px;
+    background: #2f6f4e;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .new-link:hover {
+    background: #285f43;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+    margin-bottom: 12px;
+  }
+
+  .filters label {
+    display: grid;
+    gap: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .grow {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  input,
+  textarea,
+  select {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #cfc7b8;
+    padding: 8px 10px;
+    background: #fbf9f4;
+    font: inherit;
+  }
+
+  .btn {
+    border: 1px solid #1f2523;
+    padding: 8px 14px;
+    background: #f5efe3;
+    cursor: pointer;
+    font: inherit;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .btn.secondary {
+    background: #fff;
+  }
+
+  .meta {
+    color: #536057;
+    margin: 0 0 16px;
+  }
+
+  .import-panel {
+    margin-bottom: 24px;
+    padding: 18px;
+    border: 1px solid #d8d2c7;
+    background: #fff;
+    display: grid;
+    gap: 12px;
+  }
+
+  .import-panel.hidden {
+    display: none;
+  }
+
+  .import-panel h2 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .hint {
+    margin: 0;
+    color: #536057;
+    font-size: 0.9rem;
+  }
+
+  .status.error {
+    color: #9b2c2c;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid #d8d2c7;
+    background: #fff;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.94rem;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #ece8df;
+  }
+
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.88rem;
+  }
+
+  .actions {
+    white-space: nowrap;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .link-btn {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: #9b2c2c;
+    cursor: pointer;
+    font: inherit;
+    text-decoration: underline;
+  }
+
+  .results-table {
+    margin-top: 12px;
+  }
+
+  #import-results-wrap.hidden {
+    display: none;
+  }
+</style>

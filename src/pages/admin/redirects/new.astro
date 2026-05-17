@@ -1,0 +1,189 @@
+---
+import { env } from "cloudflare:workers";
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import FormField from "../../../components/admin/FormField.astro";
+import { listCategories } from "../../../lib/db/categories";
+import { listAdminPosts } from "../../../lib/db/posts";
+
+interface RuntimeEnv {
+  CFBLOG_DB: D1Database;
+}
+
+const runtimeEnv = env as RuntimeEnv;
+const [posts, categories] = await Promise.all([
+  listAdminPosts(runtimeEnv.CFBLOG_DB, { status: "published", limit: 500, offset: 0 }),
+  listCategories(runtimeEnv.CFBLOG_DB)
+]);
+
+const pathTargets = [
+  ...posts.map((p) => ({ kind: "post" as const, label: p.title, path: p.full_path })),
+  ...categories.map((c) => ({ kind: "category" as const, label: c.name, path: c.full_path }))
+].sort((a, b) => a.path.localeCompare(b.path));
+---
+
+<AdminLayout title="New redirect">
+  <p class="intro">
+    Map a legacy path (for example a WordPress permalink) to a CFblog URL. Paths are normalised on save; the from path is stored in lowercase.
+  </p>
+
+  <form class="panel" id="redirect-form">
+    <FormField for="from-path" label="From path" hint="Legacy URL path visitors may still request, for example /2024/05/old-article">
+      <input id="from-path" name="fromPath" type="text" required placeholder="/2024/05/old-article" />
+    </FormField>
+
+    <FormField for="to-path" label="To path" hint="Internal CFblog path to send visitors to">
+      <input id="to-path" name="toPath" type="text" required placeholder="/guides/new-article" />
+    </FormField>
+
+    <FormField for="target-picker" label="Browse targets" hint="Fill the to path from a published post or category">
+      <select id="target-picker">
+        <option value="">Select a post or category…</option>
+        {pathTargets.map((t) => (
+          <option value={t.path}>
+            [{t.kind}] {t.label} — {t.path}
+          </option>
+        ))}
+      </select>
+    </FormField>
+
+    <FormField for="status-code" label="Status code">
+      <select id="status-code" name="statusCode">
+        <option value="301" selected>301 — Permanent</option>
+        <option value="302">302 — Temporary</option>
+        <option value="307">307 — Temporary (preserve method)</option>
+        <option value="308">308 — Permanent (preserve method)</option>
+      </select>
+    </FormField>
+
+    <FormField for="note" label="Note" hint="Optional reference, for example WP post ID">
+      <input id="note" name="note" type="text" />
+    </FormField>
+
+    <div class="actions">
+      <button type="submit" class="btn primary">Save redirect</button>
+      <a class="btn" href="/admin/redirects">Cancel</a>
+    </div>
+    <p class="status" id="form-status" role="status"></p>
+  </form>
+</AdminLayout>
+
+<script>
+  const form = document.getElementById("redirect-form");
+  const targetPicker = document.getElementById("target-picker");
+  const toPath = document.getElementById("to-path");
+  const statusEl = document.getElementById("form-status");
+
+  targetPicker?.addEventListener("change", () => {
+    if (!(targetPicker instanceof HTMLSelectElement) || !(toPath instanceof HTMLInputElement)) return;
+    if (targetPicker.value) {
+      toPath.value = targetPicker.value;
+    }
+  });
+
+  function errorMessage(payload: unknown): string | null {
+    if (!payload || typeof payload !== "object" || !("error" in payload)) {
+      return null;
+    }
+    const error = (payload as { error: unknown }).error;
+    return typeof error === "string" ? error : null;
+  }
+
+  function setStatus(message: string, isError: boolean) {
+    if (!(statusEl instanceof HTMLElement)) return;
+    statusEl.textContent = message;
+    statusEl.classList.toggle("error", isError);
+  }
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const fromEl = document.getElementById("from-path");
+    const toEl = document.getElementById("to-path");
+    const statusCodeEl = document.getElementById("status-code");
+    const noteEl = document.getElementById("note");
+
+    const body = {
+      fromPath: fromEl instanceof HTMLInputElement ? fromEl.value : "",
+      toPath: toEl instanceof HTMLInputElement ? toEl.value : "",
+      statusCode: statusCodeEl instanceof HTMLSelectElement ? Number(statusCodeEl.value) : 301,
+      note: noteEl instanceof HTMLInputElement ? noteEl.value : ""
+    };
+
+    setStatus("Saving...", false);
+    const res = await fetch("/api/admin/redirects", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    });
+    const payload: unknown = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setStatus(errorMessage(payload) ?? "Could not save redirect.", true);
+      return;
+    }
+    const record =
+      payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+    const warning = typeof record.warning === "string" ? record.warning : "";
+    setStatus(warning ? `Saved. ${warning}` : "Redirect saved.", false);
+    window.setTimeout(() => {
+      window.location.href = "/admin/redirects";
+    }, warning ? 1200 : 400);
+  });
+</script>
+
+<style>
+  .intro {
+    max-width: 52rem;
+    margin: 0 0 20px;
+    color: #536057;
+    line-height: 1.55;
+  }
+
+  .panel {
+    max-width: 640px;
+    display: grid;
+    gap: 18px;
+  }
+
+  input,
+  select,
+  textarea {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #cfc7b8;
+    padding: 10px 12px;
+    background: #fbf9f4;
+    font: inherit;
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .btn {
+    display: inline-block;
+    border: 1px solid #1f2523;
+    padding: 10px 14px;
+    background: #f5efe3;
+    color: #1f2523;
+    cursor: pointer;
+    font: inherit;
+    text-decoration: none;
+  }
+
+  .btn.primary {
+    background: #2f6f4e;
+    border-color: #2f6f4e;
+    color: #fff;
+  }
+
+  .status {
+    min-height: 1.4em;
+    margin: 0;
+  }
+
+  .status.error {
+    color: #9b2c2c;
+  }
+</style>
