@@ -113,13 +113,25 @@ const total = await countRedirects(runtimeEnv.CFBLOG_DB, { q });
     importPanel?.classList.toggle("hidden");
   });
 
-  function setImportStatus(message, isError) {
+  function errorMessage(payload: unknown): string | null {
+    if (!payload || typeof payload !== "object" || !("error" in payload)) {
+      return null;
+    }
+    const error = (payload as { error: unknown }).error;
+    return typeof error === "string" ? error : null;
+  }
+
+  function asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+  }
+
+  function setImportStatus(message: string, isError: boolean) {
     if (!(importStatus instanceof HTMLElement)) return;
     importStatus.textContent = message;
     importStatus.classList.toggle("error", isError);
   }
 
-  async function runImport(body, contentType) {
+  async function runImport(body: string, contentType: string) {
     setImportStatus("Importing...", false);
     const res = await fetch("/api/admin/redirects/import", {
       method: "POST",
@@ -127,25 +139,32 @@ const total = await countRedirects(runtimeEnv.CFBLOG_DB, { q });
       credentials: "same-origin",
       body
     });
-    const payload = await res.json().catch(() => ({}));
+    const payload: unknown = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setImportStatus(typeof payload.error === "string" ? payload.error : "Import failed.", true);
+      setImportStatus(errorMessage(payload) ?? "Import failed.", true);
       return;
     }
-    const imported = typeof payload.imported === "number" ? payload.imported : 0;
-    const failed = typeof payload.failed === "number" ? payload.failed : 0;
+    const record = asRecord(payload) ?? {};
+    const imported = typeof record.imported === "number" ? record.imported : 0;
+    const failed = typeof record.failed === "number" ? record.failed : 0;
     setImportStatus(`Imported ${imported} redirect(s). ${failed} failed.`, failed > 0);
     if (importResults instanceof HTMLElement && importResultsWrap instanceof HTMLElement) {
       importResults.innerHTML = "";
-      const rows = Array.isArray(payload.results) ? payload.results : [];
+      const rows = Array.isArray(record.results) ? record.results : [];
       for (const row of rows) {
         if (!row || typeof row !== "object") continue;
-        const tr = document.createElement("tr");
+        const tableRow = document.createElement("tr");
         const fromPath = "fromPath" in row ? String(row.fromPath) : "";
         const ok = "ok" in row && row.ok === true;
         const error = "error" in row && typeof row.error === "string" ? row.error : "";
-        tr.innerHTML = `<td class="mono">${fromPath}</td><td>${ok ? "OK" : error}</td>`;
-        importResults.appendChild(tr);
+        const fromCell = document.createElement("td");
+        fromCell.className = "mono";
+        fromCell.textContent = fromPath;
+        const resultCell = document.createElement("td");
+        resultCell.textContent = ok ? "OK" : error;
+        tableRow.appendChild(fromCell);
+        tableRow.appendChild(resultCell);
+        importResults.appendChild(tableRow);
       }
       importResultsWrap.classList.remove("hidden");
     }

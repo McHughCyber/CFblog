@@ -83,7 +83,7 @@ const statusCodes = [301, 302, 307, 308];
   </form>
 </AdminLayout>
 
-<script define:vars={{ redirectId: id }}>
+<script is:inline define:vars={{ redirectId: id }}>
   const form = document.getElementById("redirect-form");
   const targetPicker = document.getElementById("target-picker");
   const toPath = document.getElementById("to-path");
@@ -95,6 +95,14 @@ const statusCodes = [301, 302, 307, 308];
       toPath.value = targetPicker.value;
     }
   });
+
+  function errorMessage(payload) {
+    if (!payload || typeof payload !== "object" || !("error" in payload)) {
+      return null;
+    }
+    const error = payload.error;
+    return typeof error === "string" ? error : null;
+  }
 
   function setStatus(message, isError) {
     if (!(statusEl instanceof HTMLElement)) return;
@@ -123,10 +131,12 @@ const statusCodes = [301, 302, 307, 308];
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setStatus(typeof payload.error === "string" ? payload.error : "Could not save redirect.", true);
+      setStatus(errorMessage(payload) || "Could not save redirect.", true);
       return;
     }
-    const warning = typeof payload.warning === "string" ? payload.warning : "";
+    const record =
+      payload && typeof payload === "object" ? payload : {};
+    const warning = typeof record.warning === "string" ? record.warning : "";
     setStatus(warning ? `Saved. ${warning}` : "Redirect updated.", false);
   });
 </script>

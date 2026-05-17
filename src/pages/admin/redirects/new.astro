@@ -80,7 +80,15 @@ const pathTargets = [
     }
   });
 
-  function setStatus(message, isError) {
+  function errorMessage(payload: unknown): string | null {
+    if (!payload || typeof payload !== "object" || !("error" in payload)) {
+      return null;
+    }
+    const error = (payload as { error: unknown }).error;
+    return typeof error === "string" ? error : null;
+  }
+
+  function setStatus(message: string, isError: boolean) {
     if (!(statusEl instanceof HTMLElement)) return;
     statusEl.textContent = message;
     statusEl.classList.toggle("error", isError);
@@ -107,12 +115,14 @@ const pathTargets = [
       credentials: "same-origin",
       body: JSON.stringify(body)
     });
-    const payload = await res.json().catch(() => ({}));
+    const payload: unknown = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setStatus(typeof payload.error === "string" ? payload.error : "Could not save redirect.", true);
+      setStatus(errorMessage(payload) ?? "Could not save redirect.", true);
       return;
     }
-    const warning = typeof payload.warning === "string" ? payload.warning : "";
+    const record =
+      payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+    const warning = typeof record.warning === "string" ? record.warning : "";
     setStatus(warning ? `Saved. ${warning}` : "Redirect saved.", false);
     window.setTimeout(() => {
       window.location.href = "/admin/redirects";
