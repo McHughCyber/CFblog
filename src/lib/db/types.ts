@@ -95,6 +95,8 @@ export interface RedirectRecord {
   to_path: string;
   status_code: number;
   created_at: string;
+  note?: string | null;
+  updated_at?: string | null;
 }
 
 export interface SchemaMigrationRecord {
